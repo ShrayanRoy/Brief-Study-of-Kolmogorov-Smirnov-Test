@@ -1,0 +1,3508 @@
+---
+title: "Kolmogorov-Smirnov Test"
+subtitle: "A non-parametric Test for Goodness of fit"
+author: "Uttaran Chatterjee(MD2227), Adrija Saha(MD2203), Shrayan Roy(MD2220)"
+institute: "Indian Statistical Institute (Delhi Centre)"
+date: "28/03/2023"
+header-includes:
+  -\usepackage{bbm}
+  -\usepackage{mathtools}
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    #css: "ki" 
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+      ratio: 16:9
+
+---
+
+# Kolmogorov-Smirnov Test as a Test of Goodness-of-Fit :
+
+- Suppose we have a random sample $X_1,X_2,....X_n$ from some population. We want to fit a distribution to the unknown population by that what we mean is that we want to check that whether the sample can be considered as random sample from a population with a continuous distribution function $F_o$ which is completely specified (for now) to us.
+
+- Hence we set our null hypothesis as $$\mathcal{H}_o : F(x)=F_o(x) \ for \ all \ x \in \mathbb{R}$$
+
+- We can consider several alternate hypothesis from the as, $$\mathcal{H}_1 : F(x)\neq F_o(x) \ for \ some \  x\in \mathbb{R}\ , \ \mathcal{H}_2 : F(x) \geq F_o(x) \ or \ \mathcal{H}_3 : F(x)\leq F_o(x)\  for \ all \ x\in \mathbb{R}$$. 
+---
+
+- In our testing problem we basically want to estimate $F$ and check whether it agrees or disagrees with our above hypothesis.
+
+- Since as we know for a fixed value of $x$ the quantity $F(x)$ is nothing but a probability value which we generally not aware of, and our natural intuition of proportion and our inclination towards averages insists us to define an estimate of $F(x)$ as,
+$$\mathbb{F}_n(x)=\frac{1}{n}\sum_{i=1}^{n}{1_{\{X_i \leq x\}}}$$
+- This function defined above is called the empirical distribution function.
+
+---
+
+# Empirical Distribution Function(ECDF) as an Estimator of the Distribution Function :
+
+- Some quick observations that we can make immediately is that,
+- $$n\mathbb{F}_n(x) \sim Binomial(n, F(x)).$$
+
+- Also, $\textbf{Weak Law of Large Numbers}$ tells us, 
+ $\mathbb{F}_n(x) \overset{\mathbb{P}}{\to} F(x)$ as $n \to \infty$ for every $x\in \mathbb{R}$
+ 
+- Hence we see that the empirical distribution function is weakly(infact strongly) consistent for the true distribution function.
+
+---
+
+# Animatic View :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height=6.3}
+rm(list = ls(all = T))  #removes all objects
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(VGAM))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(goftest))
+suppressPackageStartupMessages(library(wavethresh))
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+edf_animation <- function(n,tag = " "){
+  set.seed(seed = 1234)
+  our.sample <- runif(max(n),0,1)
+  x <- seq(-0.2,1.2,by = 0.01)
+  edf_value <- NULL
+  for(i in 1:length(n)){
+   my_edf <- ecdf(our.sample[1:n[i]])
+   edf_value <- rbind(edf_value,data.frame(x_val = x,edf = my_edf(x),sample_size = c(n[i])))
+  }
+  
+  graph.1 <- ggplot(edf_value,aes(x = x_val,frame = sample_size)) + 
+    geom_line(aes(y = edf),col = "red") +
+    labs(x = 'x',y = 'Empirical Distribution Function',title = "Uniform Convergence of Empirical Distribution Function", 
+    subtitle = "For U(0,1) Distribution") +
+     theme_bw(14) + defined_theme
+  
+  plotly::ggplotly(graph.1)
+}  
+
+edf_animation(10*seq(5,200,by = 10))
+
+```
+
+---
+# Kolmogorov-Smirnov Statistic : 
+
+- The Kolmogorov-Smirnov Statistic is defined as,
+$$D_n= Sup_{x \in \mathbb{R}}|\mathbb{F}_n(x)-F_o(x)|.$$
+
+- Further we can also define, 
+$${D_n}^+=Sup_{x \in \mathbb{R}}(\mathbb{F}_n(x)-F_o(x)) \ and \ {D_n}^-=Sup_{x \in \mathbb{R}}(F_o(x)-\mathbb{F}_n(x))$$
+
+- What the quantity $D_n$ is actually quantifying is the distance two functions $\mathbb{F}_n$ and $F$ under the supremum metric. 
+- Hence, if our sample $X_1,....,X_n$ is really a sample drawn from $F_o$ then we expect $D_n$ (even $D_n^+$ and $D_n^-$ ) to give negligible value.
+-Hence we reject null for large values of $D_n$ (or $D_n^+$ or $D_n^-$).
+
+---
+
+# Glivenko-Cantelli Theorem - The Fundamental Statistical Theorem :
+
+- One of the theoretical motivation behind the use of this Kolmogorov statistic is the following theorem -
+
+- $\textbf{Glivenko-Cantelli Theorem}$
+
+ For $\{X_n\}_{n\geq 1}$ be a sequence of random variables from a probability space $(\Omega,\mathcal{F},\mathbb{P})$. If we define the empirical distribution function (edf) as defined earier, then we have,
+ $$\mathbb{P}\left(\lim_{n \to \infty} \sup_{x \in \mathbb{R}} |\mathbb{F}_n(x)-F(x)|=0\right)=1$$
+
+ 
+- This theorem was proved by Glivenko for continuous distributions and the Cantelli proved the theorem for any distribution function.
+
+- What the theorem says is remarkable and strong as it says that the true distribution function $F$ can be $\textit{rediscovered from the data}$ after making sufficiently large numbers of observations.
+
+---
+
+# Glivenko-Cantelli Theorem - The Fundamental Statistical Theorem (Contd.) :
+
+
+- The theorem says that suppose there are two experimenters A and B keep on taking sequence of observations from the same population, then for the A lets say her sample is $X_1(\omega), X_2(\omega),.......$  and B has drawn her sample to be $X_1(\omega'),X_2(\omega'),.......$ for $\omega,\omega' \in \Omega$ respectively, the theorem above ensures that the empirical distribution function $\mathbb{F}_n(x)$ converges to $F(x)$ uniformly in $x \in \mathbb{R}$ such that $\omega, \omega' \in N \subseteq \Omega$ and $\mathbb{P}(N)=1$.
+
+- Hence, it was quite rightfully referred as the $\textbf{Fundamental Statistical Theorem}$ by Renyi and as $\textbf{Central Statistical Theorem}$ by Loeve.
+
+- Clearly, one of the immediate consequence of this theorem is $\textbf{Kolmogorov-Smirnov Test}$ which we will be studying in detail through simulations.
+
+
+---
+
+# Convergence of the Kolmogorov Statistics $D_n$ :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+rm(list=ls())
+set.seed(1234)
+
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+#mixture Normal dist
+dmixnorm <- function(x){
+ dnorm(x,-4,2)*(1/3)+ dnorm(x,0,0.35)*(1/3) + dnorm(x,4,2)*(1/3)
+}
+
+rmixnorm <- function(n){
+  s <- rmultinom(n,1,c(1,1,1)/3)
+  rnorm(n,-4,2)*s[1,] + rnorm(n,0,.35)*s[2,] + rnorm(n,4,2)*s[3,]
+}
+
+pmixnorm <- function(x){
+ pnorm(x,-4,2)*(1/3)+ pnorm(x,0,0.35)*(1/3) + pnorm(x,4,2)*(1/3)
+}
+
+gk_check=function(r_CDF,F0,epsilon,tag){
+  y = NULL
+  n = 0
+  Dn = 2*epsilon
+  while(Dn[length(Dn)]>epsilon & n <5000)
+  {
+   n=n+1
+   y=c(y,r_CDF(1))
+   Dn[n]=ks.test(y,function(x){F0(x)},alternative = "two.sided")$statistic
+  }
+
+  my.data=data.frame(Index=1:n,Dn)
+  graph.1=ggplot(my.data,aes(x = Index,y = Dn)) + geom_line(col="darkgoldenrod1",size = 2) +
+    ggtitle(paste("Plot of Sample Size(n) vs Dn for \n",tag),subtitle = paste("n0= ",n)) + geom_point(col="red",size=1.5)+
+    labs(x="Sample Size (n)",y="Value of Dn")+
+    theme_bw(14) + defined_theme
+ graph.1
+  
+}
+g1=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+g2=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+g3=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+g4=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+g5=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+g6=gk_check(r_CDF=function(n){runif(n,0,1)},F0=function(x){punif(x,0,1)},epsilon = 0.01,"Uniform(0,1)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+# Convergence of $D_n$ for Exponential :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+g1=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+g2=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+g3=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+g4=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+g5=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+g6=gk_check(r_CDF=function(n){rexp(n,1)},F0=function(x){pexp(x,1)},epsilon = 0.01,"Exponential(1)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+# Convergence of $D_n$ for Cauchy :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+g1=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+g2=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+g3=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+g4=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+g5=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+g6=gk_check(r_CDF=function(n){rcauchy(n,0,1)},F0=function(x){pcauchy(x,0,1)},epsilon = 0.01,"Cauchy(0,1)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+# Convergence of $D_n$ for Truncated Normal :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+r_CDF=function(n){
+  u=runif(n,pnorm(-2),pnorm(2))
+  qnorm(u)
+}
+my_CDF = function(x){
+  ifelse(x < -2,0,
+   ifelse(x < 2,(pnorm(x) - pnorm(-2))/(pnorm(2) - pnorm(-2)),1))
+}
+
+g1=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+g2=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+g3=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+g4=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+g5=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+g6=gk_check(r_CDF,my_CDF,epsilon = 0.01,"Normal(0,1) truncated at -2 and 2")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+#Convergence of $D_n$ for Mixture Normal Distribution :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+g1=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+g2=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+g3=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+g4=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+g5=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+g6=gk_check(rmixnorm,pmixnorm,epsilon = 0.01,"Mixture Normal(-4,0,4,2,0.35,2)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+# Convergence of $D_n$ for Binomial Distribution :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+g1=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+g2=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+g3=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+g4=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+g5=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+g6=gk_check(r_CDF=function(n){rbinom(n,10,0.68)},F0=function(x){pbinom(x,10,0.68)},epsilon = 0.01,"Binomial(10,0.68)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+# Convergence of $D_n$ for Poisson Distribution :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+g1=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+g2=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+g3=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+g4=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+g5=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+g6=gk_check(r_CDF=function(n){rpois(n,1)},F0=function(x){ppois(x,1)},epsilon = 0.01,"Poisson(1)")
+grid.arrange(g1,g2,g3,g4,g5,g6 , nrow=2)
+```
+
+---
+
+#Simulated Exact Distribution of $D_n^+$ :
+
+- For Sample Size n=5
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+
+rm(list = ls(all = T))  #removes all objects
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(VGAM))
+suppressPackageStartupMessages(library(plotly))
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                  face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                  axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                  colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                  legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                  legend.box.background = element_rect(colour = "black"))
+
+#mixture Normal dist
+dmixnorm <- function(x){
+ dnorm(x,-4,2)*(1/3)+ dnorm(x,0,0.35)*(1/3) + dnorm(x,4,2)*(1/3)
+}
+
+rmixnorm <- function(n){
+  s <- rmultinom(n,1,c(1,1,1)/3)
+  rnorm(n,-4,2)*s[1,] + rnorm(n,0,.35)*s[2,] + rnorm(n,4,2)*s[3,]
+}
+
+pmixnorm <- function(x){
+ pnorm(x,-4,2)*(1/3)+ pnorm(x,0,0.35)*(1/3) + pnorm(x,4,2)*(1/3)
+}
+
+Exact_distribution_H0 <- function(n,True_CDF,r_CDF,tag = " ",my.colour="red"){
+  set.seed(seed = 1234)
+  test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF(n)
+    performed_test <- ks.test(our_sample,True_CDF,alternative = "greater")
+    performed_test$statistic
+  })
+  
+  ggplot(my.df <- data.frame(test_stat_val),aes(test_stat_val)) + 
+        geom_histogram(aes(y = ..density..),breaks = seq(0,1,by = 1/sqrt(1000)),
+        col = 'black',fill = my.colour) + labs(x = 'Dn+',y = 'Density',
+        title = "Simulated Exact Distribution Under H0 of \n One Sample Kolmogorov-Smirnov Test Statistic Dn+",
+        subtitle = paste(tag,"and n = ",n)) + theme_bw(14) + defined_theme
+}
+
+graph.1=Exact_distribution_H0(5,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},tag="For N(0,1)","cyan")
+graph.2=Exact_distribution_H0(5,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},tag="For C(0,1)","cyan")
+graph.3=Exact_distribution_H0(5,function(x){pexp(x,2)},function(n){rexp(n,2)},tag="For Exp(2)","cyan")
+graph.4=Exact_distribution_H0(5,function(x){pweibull(x,2,1)},function(n){rweibull(n,2,1)},tag="For Weibull(2,1)","cyan")
+graph.5=Exact_distribution_H0(5,pmixnorm,rmixnorm,tag="For Mixture Normal(-4,0,4,2,0.35,2)","cyan")
+r_CDF=function(n){
+  u=runif(n,pnorm(-3),pnorm(3))
+  qnorm(u)
+}
+graph.6=Exact_distribution_H0(5,function(x){ifelse(x < (-3),0,ifelse(
+  x<3,(pnorm(x)-pnorm(-3))/(pnorm(3) - pnorm(-3)),1))},r_CDF, tag="For Truncated N(0,1) over (-3,3)","cyan")
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,graph.5,graph.6,nrow = 3,ncol=2)
+
+
+```
+
+---
+
+- For Sample Size n=15
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+graph.1=Exact_distribution_H0(15,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},tag="For N(0,1)","yellow")
+graph.2=Exact_distribution_H0(15,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},tag="For C(0,1)","yellow")
+graph.3=Exact_distribution_H0(15,function(x){pexp(x,2)},function(n){rexp(n,2)},tag="For Exp(2)","yellow")
+graph.4=Exact_distribution_H0(15,function(x){pweibull(x,2,1)},function(n){rweibull(n,2,1)},tag="For Weibull(2,1)","yellow")
+graph.5=Exact_distribution_H0(15,pmixnorm,rmixnorm,tag="For Mixture Normal(-4,0,4,2,0.35,2)","yellow")
+r_CDF=function(n){
+  u=runif(n,pnorm(-3),pnorm(3))
+  qnorm(u)
+}
+graph.6=Exact_distribution_H0(15,function(x){ifelse(x < (-3),0,ifelse(
+  x<3,(pnorm(x)-pnorm(-3))/(pnorm(3) - pnorm(-3)),1))},r_CDF, tag="For Truncated N(0,1) over (-3,3)","yellow")
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,graph.5,graph.6,nrow = 3,ncol=2)
+
+```
+
+* Empirically, we verified that exact distribution of $D_n^+$ is "Distribution-Free" under Continuous Parent Population.
+
+---
+
+#Simulated Exact Distribution of $D_n$ :
+
+- For Sample Size n=6
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(VGAM))
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                  face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                  axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                  colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                  legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                  legend.box.background = element_rect(colour = "black"))
+
+
+Exact_distribution_H0_2 <- function(n,True_CDF,r_CDF,tag = " ",my.colour="red"){
+  set.seed(seed = 1234)
+  test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF(n)
+    performed_test <- ks.test(our_sample,True_CDF,alternative = "two.sided")
+    performed_test$statistic
+  })
+  
+  ggplot(my.df <- data.frame(test_stat_val),aes(test_stat_val)) + 
+        geom_histogram(aes(y = ..density..),breaks = seq(0,1,by = 1/sqrt(1000)),
+        col = 'black',fill = my.colour) + labs(x = 'Dn',y = 'Density',
+        title = "Simulated Exact Distribution Under H0 of \n One Sample Kolmogorov-Smirnov Test Statistic Dn",
+        subtitle = paste(tag,"and n = ",n)) + theme_bw(14) + defined_theme
+}
+
+graph.1=Exact_distribution_H0_2(6,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},tag="For N(0,1)","deeppink")
+graph.2=Exact_distribution_H0_2(6,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},tag="For C(0,1)","deeppink")
+graph.3=Exact_distribution_H0_2(6,function(x){pexp(x,2)},function(n){rexp(n,2)},tag="For Exp(2)","deeppink")
+graph.4=Exact_distribution_H0_2(6,function(x){pweibull(x,2,1)},function(n){rweibull(n,2,1)},tag="For Weibull(2,1)","deeppink")
+graph.5=Exact_distribution_H0_2(6,pmixnorm,rmixnorm,tag="For Mixture Normal(-4,0,4,2,0.35,2)","deeppink")
+r_CDF=function(n){
+  u=runif(n,pnorm(-3),pnorm(3))
+  qnorm(u)
+}
+graph.6=Exact_distribution_H0_2(6,function(x){ifelse(x < (-3),0,ifelse(
+  x<3,(pnorm(x)-pnorm(-3))/(pnorm(3) - pnorm(-3)),1))},r_CDF, tag="For Truncated N(0,1) over (-3,3)","deeppink")
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,graph.5,graph.6,nrow = 3,ncol=2)
+
+
+```
+
+---
+
+- For Sample Size n = 18
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+graph.1=Exact_distribution_H0_2(18,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},tag="For N(0,1)","coral1")
+graph.2=Exact_distribution_H0_2(18,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},tag="For C(0,1)","coral1")
+graph.3=Exact_distribution_H0_2(18,function(x){pexp(x,2)},function(n){rexp(n,2)},tag="For Exp(2)","coral1")
+graph.4=Exact_distribution_H0_2(18,function(x){pweibull(x,2,1)},function(n){rweibull(n,2,1)},tag="For Weibull(2,1)","coral1")
+graph.5=Exact_distribution_H0_2(18,pmixnorm,rmixnorm,tag="For Mixture Normal(-4,0,4,2,0.35,2)","coral1")
+r_CDF=function(n){
+  u=runif(n,pnorm(-3),pnorm(3))
+  qnorm(u)
+}
+graph.6=Exact_distribution_H0_2(18,function(x){ifelse(x < (-3),0,ifelse(
+  x<3,(pnorm(x)-pnorm(-3))/(pnorm(3) - pnorm(-3)),1))},r_CDF, tag="For Truncated N(0,1) over (-3,3)","coral1")
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,graph.5,graph.6,nrow = 3,ncol=2)
+
+```
+
+* Empirically, we verified that exact distribution of $D_n$ is "Distribution-Free" under Continuous Parent Population.
+
+---
+
+# What if the Parent Population is Discrete ?
+
+- For Sample Size n = 10
+
+```{r,echo=FALSE,warning=FALSE,fig.width=18,fig.height=6}
+
+graph.1=Exact_distribution_H0(10,function(x){pbinom(x,5,0.3)},function(n){rbinom(n,5,0.3)},tag="For Binomial(5,0.3)","chartreuse1")
+graph.2=Exact_distribution_H0(10,function(x){ppois(x,2)},function(n){rpois(n,2)},tag="For Poisson(2)","chartreuse1")
+graph.3=Exact_distribution_H0(10,function(x){pgeom(x,0.6)},function(n){rgeom(n,0.6)},tag="For Geometric(0.6)","chartreuse1")
+graph.4=Exact_distribution_H0_2(10,function(x){pbinom(x,5,0.3)},function(n){rbinom(n,5,0.3)},tag="For Binomial(5,0.3)","lightblue2")
+graph.5=Exact_distribution_H0_2(10,function(x){ppois(x,2)},function(n){rpois(n,2)},tag="For Poisson(2)","lightblue2")
+graph.6=Exact_distribution_H0_2(10,function(x){pgeom(x,0.6)},function(n){rgeom(n,0.6)},tag="For Geometric(0.6)","lightblue2")
+
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,graph.5,graph.6,nrow = 2,ncol=3)
+
+```
+
+* For Discrete Distribution, there is modified version of Kolmogorov-Smirnov Test [Allen, Mark Edward : Kolmogorov-Smirnov test for discrete distributions](https://apps.dtic.mil/sti/pdfs/ADA024845.pdf).
+
+---
+
+# Asymptotic Distribution of $D_n^+$ and $D_n$ Under $H_0$ :
+
+### If $F$ is continuous, Then - 
+
+* $\lim\limits_{n \rightarrow \infty} P(\sqrt n D_n^+ \le z) = 1 - e^{-2z^{2}}$ for $z \in R^+$
+
+* $\lim\limits_{n \rightarrow \infty} P(\sqrt n D_n \le z) = 1 - 2 \sum_{i = 1}^{\infty} (-1)^{i-1}e^{-2i^{2}z^{2}}$ for $z \in R^+$
+
+* $V = 4 n  {{{D_n}^+} ^2} \rightarrow {\chi_2^2}$  as  $n \rightarrow \infty$
+
+
+- Query : **Are they valid if F is not continuous ?**
+
+---
+
+# Asymptotic Distribution of $\sqrt n D_n^+$ under $H_0$ :
+
+- For Sample Size n = 30
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+Asymptotic_distribution_H0 <- function(n,True_CDF,r_CDF,tag = " ",my.col){
+  set.seed(seed = 1234)
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF(n)
+    performed_test <- ks.test(our_sample,True_CDF,alternative = "greater")
+    sqrt(n)*performed_test$statistic
+  })
+  
+  ggplot(my.df <- data.frame(asymp_test_stat_val),aes(asymp_test_stat_val)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+    by = 1/sqrt(100)),col = 'black',fill = my.col) + labs(x = 'sqrt(n)*Dn+',y = 'Density',
+    title = "Asymptotic Distribution Under H0 \n for of Sample Kolmogorov-Smirnov Test Statistic Dn+",
+    subtitle = paste(tag,"and n = ",n)) + geom_function(fun = function(x){ 4*x*exp(-2*(x^2)) },col = "red",size = 1.2) + 
+    theme_bw(14) + defined_theme
+   
+}
+graph.1=Asymptotic_distribution_H0(30,function(x){punif(x,0,3)},function(n){runif(n,0,3)},
+                           tag = "For U(0,3) ","aquamarine")
+graph.2=Asymptotic_distribution_H0(30,function(x){pexp(x,rate=1)},function(n){rexp(n,rate=1)},
+                           tag = "For Exp(1) ","aquamarine")
+graph.3=Asymptotic_distribution_H0(30,function(x){plogis(x,4,3)},function(n){rlogis(n,4,3)},
+                           tag = "For Logistic(4,3) ","aquamarine")
+
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,ncol=3)
+
+```
+
+---
+
+# Asymptotic Distribution of $\sqrt n D_n^+$ under $H_0$(Contd.) :
+
+- For Sample Size n = 50
+
+```{r,,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+
+graph.4=Asymptotic_distribution_H0(50,function(x){punif(x,0,3)},function(n){runif(n,0,3)},
+                           tag = "For U(0,3) ","gold1")
+graph.5=Asymptotic_distribution_H0(50,function(x){pexp(x,rate=1)},function(n){rexp(n,rate=1)},
+                           tag = "For Exp(1) ","gold1")
+graph.6=Asymptotic_distribution_H0(50,function(x){plogis(x,4,3)},function(n){rlogis(n,4,3)},
+                           tag = "For Logistic(4,3) ","gold1")
+
+gridExtra::grid.arrange(graph.4,graph.5,graph.6,ncol=3)
+
+```
+
+---
+
+# How large is "large" ?  
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=10}
+
+my_convergence <- function(n){
+  set.seed(seed = 1234)
+  my.data <- NULL
+  for(i in 1:length(n)){
+    ks.statistic <- replicate(1000,{
+      my.sample <- runif(n[i],0,1)
+      sqrt(n[i])*ks.test(my.sample,"punif",alternative = "greater")$statistic
+    })
+    my.data <- c(my.data,ks.statistic)
+  }
+    
+  Index <- rep(factor(paste("n = ",n),levels = paste("n = ",n)),each = 1000)
+  graph.data <- data.frame(s = my.data,Index= Index)
+  
+  ggplot(data = graph.data,aes(x = s,fill = Index)) +
+     geom_histogram(aes(y = ..density..),col = "black",position = "identity",
+     breaks = seq(0,ceiling(sqrt(max(n))) + 1/sqrt(100),
+     by = 1/sqrt(100))) + labs(x = 'sqrt(n)*Dn+',y = 'Density',
+     title = "Checking Convergence to Asymptotic Distribution Under H0 for \n One Sample Kolmogorov-Smirnov Test Statistic sqrt(n)*Dn+",
+     subtitle = "Data is generated from U(0,1)") + 
+     geom_function(fun = function(x){ 4*x*exp(-2*x^2) },col = "black",linetype = "dashed",size = 1.2) +
+    facet_wrap(.~Index ) + 
+     theme_bw(14) + defined_theme
+
+}
+
+my_convergence(c(10,15,25,35,50,70))
+
+```
+
+---
+
+# Asymptotic Distribution of $\sqrt n D_n$ under $H_0$ :
+
+- For Sample Size n = 35
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+emp_pdf=function(z)
+{
+  epsilon=0.01
+  a=8*z*exp(-2*z*z)
+  b=a+2*epsilon
+  i=2
+  while(abs(b-a)>epsilon)
+  {
+    a=b
+    b=a+8*((-1)^(i-1))*i*i*z*exp(-2*i*i*z*z)
+    i=i+1
+  }
+  return(b)
+}
+Asymptotic_distribution_H0_1 <- function(n,True_CDF,r_CDF,tag = " ",my.col){
+  set.seed(seed = 1234)
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF(n)
+    performed_test <- ks.test(our_sample,True_CDF,alternative = "two.sided")
+    sqrt(n)*performed_test$statistic
+  })
+  
+  ggplot(my.df <- data.frame(asymp_test_stat_val),aes(asymp_test_stat_val)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+    by = 1/sqrt(100)),col = 'black',fill = my.col) + labs(x = 'sqrt(n)*Dn',y = 'Density',
+    title = "Asymptotic Distribution Under H0 \n for of Sample Kolmogorov-Smirnov Test Statistic Dn",
+    subtitle = paste(tag,"and n = ",n)) + geom_function(fun = function(x){vapply(x,FUN= emp_pdf,FUN.VALUE = 2)},col = "red",size = 1.2) + 
+    theme_bw(14) + defined_theme
+   
+}
+graph.1=Asymptotic_distribution_H0_1(35,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},
+                           tag = "For N(0,1) ","seagreen2")
+graph.2=Asymptotic_distribution_H0_1(35,function(x){prayleigh(x,1)},function(n){rrayleigh(n,1)},
+                           tag = "For Rayleigh(1) ","seagreen2")
+graph.3=Asymptotic_distribution_H0_1(35,function(x){plaplace(x,4,3)},function(n){rlaplace(n,4,3)},
+                           tag = "For Laplace(4,3) ","seagreen2")
+
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,ncol=3)
+
+```
+
+---
+
+# Asymptotic Distribution of $\sqrt n D_n$ under $H_0$(Contd.) :
+
+- For Sample Size n = 60
+
+```{r,,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+graph.4=Asymptotic_distribution_H0_1(60,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},
+                           tag = "For N(0,1) ","plum1")
+graph.5=Asymptotic_distribution_H0_1(60,function(x){prayleigh(x,1)},function(n){rrayleigh(n,1)},
+                           tag = "For Rayleigh(1) ","plum1")
+graph.6=Asymptotic_distribution_H0_1(60,function(x){plaplace(x,4,3)},function(n){rlaplace(n,4,3)},
+                           tag = "For Laplace(4,3) ","plum1")
+
+
+
+gridExtra::grid.arrange(graph.4,graph.5,graph.6,ncol=3)
+
+```
+
+---
+
+# How large is "large" ?  
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=10}
+
+my_convergence <- function(n){
+  set.seed(seed = 1234)
+  my.data <- NULL
+  for(i in 1:length(n)){
+    ks.statistic <- replicate(1000,{
+      my.sample <- runif(n[i],0,1)
+      sqrt(n[i])*ks.test(my.sample,"punif",alternative = "two.sided")$statistic
+    })
+    my.data <- c(my.data,ks.statistic)
+  }
+    
+  Index <- rep(factor(paste("n = ",n),levels = paste("n = ",n)),each = 1000)
+  graph.data <- data.frame(s = my.data,Index= Index)
+  
+  ggplot(data = graph.data,aes(x = s,fill = Index)) +
+     geom_histogram(aes(y = ..density..),col = "black",position = "identity",
+     breaks = seq(0,ceiling(sqrt(max(n))) + 1/sqrt(100),
+     by = 1/sqrt(100))) + labs(x = 'sqrt(n)*Dn',y = 'Density',
+     title = "Checking Convergence to Asymptotic Distribution Under H0 for \n One Sample Kolmogorov-Smirnov Test Statistic sqrt(n)*Dn",
+     subtitle = "Data is generated from U(0,1)") + 
+     geom_function(fun = function(x){vapply(x,FUN= emp_pdf,FUN.VALUE = 2)},col = "black",linetype = "dashed",size = 1.2) +
+    facet_wrap(.~Index ) + 
+     theme_bw(14) + defined_theme
+
+}
+
+my_convergence(c(10,15,20,35,60,80))
+
+```
+
+---
+
+# Asymptotic Distribution of $\sqrt n D_n^+$ under H1
+
+* To test $H_0$: $F_X$ = $F_0$ for all $x$ Vs. $H_1$: $F_X(x)  \ge F_0(x)$ for all $x$ and
+  $F_X(x) > F_0(x)$ with $+ve$ probability.
+
+* We have several choices of alternatives ! 
+
+--
+
+* Here, we will consider some particular cases and illustrate them. Later in
+  power comparison we will see more of it.
+
+---
+
+# Plot of CDFs for Location Problem :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+ggplot() + xlim(-5,5) + geom_function(fun = "pnorm",aes(colour = "H0 CDF"),size = 1.3) + 
+    geom_function(fun = function(x){ pnorm(x,-1,1)},aes(colour = "N(-1,1) CDF"),size = 1.2) + 
+   geom_function(fun = function(x){ pnorm(x,-2,1)},aes(colour = "N(-2,1) CDF"),size = 1.2) + 
+   labs(x = "x","CDF",title = "Plot of CDF's considered under H0 and H1",subtitle = "") + theme_bw(14) + 
+   defined_theme
+
+
+```
+
+---
+
+# To test H0: X ~ Normal(0,1) vs. H1: X ~ Normal(- $\mu$ ,1); $\mu$ > 0 
+
+* Sample Size(n) = 40
+
+```{r,echo=FALSE,warning=FALSE,fig.width=11,fig.height = 5.5,fig.align='center'}
+
+Animated_Asymptotic_distribution_H1_Location <- function(n,True_CDF,r_CDF,parameter,tag = " "){
+  set.seed(seed = 1234)
+  Distribution_data <- NULL
+  for(i in 1:length(parameter)){
+    asymp_test_stat_val <- replicate(1000,{
+      our_sample <- r_CDF(n) - parameter[i]
+      performed_test <- ks.test(our_sample,True_CDF,alternative = "greater")
+      sqrt(n)*performed_test$statistic
+    })
+    Distribution_data <- rbind(Distribution_data,
+                               data.frame(Test_stat = asymp_test_stat_val,theta = parameter[i]))
+  }
+  
+  graph.1 <- ggplot(Distribution_data,aes(Test_stat,frame = theta)) + 
+    geom_histogram(aes(y = ..density..),position = "identity",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                           by = 1/sqrt(100)),col = 'black',fill = "cyan") + labs(x = 'sqrt(n)*Dn+',y = 'Density',
+                                                                                                                                 title = "Asymptotic Distribution Under H1 of One Sample Kolmogorov-Smirnov Test Statistic Dn+",
+                                                                                                                                 subtitle = tag) + theme_bw(14) +  geom_vline(xintercept = 0.21017*sqrt(40),size = 0.9,linetype = "dashed") + defined_theme
+  plotly::ggplotly(graph.1)
+}
+
+Animated_Asymptotic_distribution_H1_Location(40,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},sort(seq(0,1.8,by = 0.1),decreasing=T),
+                                             tag = "H0: X ~ Normal(0,1) vs. H1: X ~ Normal(-mu,1); mu > 0")
+
+
+```
+
+---
+
+#Plot of CDFs for Scale Problem :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+ggplot() + xlim(0,7) + geom_function(fun = "pexp",aes(colour = "H0 CDF"),size = 1.3) + 
+    geom_function(fun = function(x){ pexp(x,2)},aes(colour = "Exp(mean=1/2) CDF"),size = 1.2) + 
+   geom_function(fun = function(x){ pexp(x,4)},aes(colour = "Exp(mean=1/4) CDF"),size = 1.2) + 
+   labs(x = "x","CDF",title = "Plot of CDF's considered under H0 and H1",subtitle = "") + theme_bw(14) + 
+   defined_theme
+
+
+```
+
+---
+
+#To test H0: X ~ Exponential(1) vs. H1: X ~ Exponential(rate = $\lambda$); $\lambda$ > 1
+
+* Sample Size(n) = 40
+
+```{r,echo=FALSE,warning=FALSE,fig.width=11,fig.height = 5.5,fig.align='center'}
+
+
+Animated_Asymptotic_distribution_H1_Scale <- function(n,True_CDF,r_CDF,parameter,tag = " "){
+  set.seed(seed = 1234)
+  Distribution_data <- NULL
+  for(i in 1:length(parameter)){
+   asymp_test_stat_val <- replicate(5000,{
+     our_sample <- r_CDF(n)/parameter[i]
+     performed_test <- ks.test(our_sample,True_CDF,alternative = "greater")
+     sqrt(n)*performed_test$statistic
+   })
+   Distribution_data <- rbind(Distribution_data,
+                        data.frame(Test_stat = asymp_test_stat_val,theta = parameter[i]))
+  }
+  
+  graph.1 <- ggplot(Distribution_data,aes(Test_stat,frame = theta)) + 
+    geom_histogram(aes(y = ..density..),position = "identity",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+    by = 1/sqrt(100)),col = 'black',fill = "cyan") + labs(x = 'sqrt(n)*Dn+',y = 'Density',
+    title = "Asymptotic Distribution Under H1 of One Sample Kolmogorov-Smirnov Test Statistic Dn+",
+    subtitle = tag) + geom_vline(xintercept = 0.21017*sqrt(40),size = 0.9,linetype = "dashed") + theme_bw(14) + defined_theme
+  plotly::ggplotly(graph.1)
+}
+
+Animated_Asymptotic_distribution_H1_Scale(40,function(x){pexp(x,1)},function(n){rexp(n,1)},sort(seq(1,10,by = 1),decreasing=T),
+        tag = "H0: X ~ Exponential(0,1) vs. H1: X ~ Exponential(rate = lambda); lambda > 1")
+
+```
+
+---
+
+#Asymptotic Distribution of $\sqrt n D_n$ under H1
+
+* To test $H_0$: $F_X$ = $F_0$ for all $x$ Vs. $H_1$: $F_X(x)  \not= F_0(x)$ for some $x$
+
+* Here also, We have several choices of alternatives !
+
+
+---
+
+# Plot of CDFs For $H_0$ : X ~ N(0,1) vs. Different Alternatives:
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+dmixnorm <- function(x){
+ dnorm(x,-4,2)*(1/3)+ dnorm(x,0,0.35)*(1/3) + dnorm(x,4,2)*(1/3)
+}
+
+rmixnorm <- function(n){
+  s <- rmultinom(n,1,c(1,1,1)/3)
+  rnorm(n,-4,2)*s[1,] + rnorm(n,0,.35)*s[2,] + rnorm(n,4,2)*s[3,]
+}
+
+pmixnorm <- function(x){
+ pnorm(x,-4,2)*(1/3)+ pnorm(x,0,0.35)*(1/3) + pnorm(x,4,2)*(1/3)
+}
+ggplot() + xlim(-7,7) + geom_function(fun = function(x){pnorm(x)},aes(colour = "Normal(0,1)"),size = 1.3) + 
+    geom_function(fun = function(x){plaplace(x)},aes(colour = "Laplace(0,1)"),size = 1.2) + 
+    geom_function(fun = function(x){pcauchy(x)},aes(colour = "Cauchy(0,1)"),size = 1.2) + 
+    geom_function(fun = pmixnorm,aes(colour = "Mixnorm CDF(-4,0,4,2,0.35,2)"),size = 1.2) +
+    labs(x = "x","CDF",title = "Plot of CDF's considered under H0 and H1",subtitle = "") +       theme_bw(14)+ 
+   defined_theme
+
+```   
+
+---
+
+#For Testing $H_0$ : N(0,1) vs different Alternatives
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+
+Asymptotic_distribution_H1 <- function(n,True_CDF,r_CDF,H0_CDF,tag = " "){
+  set.seed(seed = 1234)
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF(n)
+    performed_test <- ks.test(our_sample,H0_CDF,alternative = "two.sided")
+    sqrt(n)*performed_test$statistic
+  })
+  
+  graph.1 <- ggplot(my.df <- data.frame(asymp_test_stat_val),aes(asymp_test_stat_val)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+    by = 1/sqrt(100)),col = 'red',fill = "yellow") + labs(x = 'sqrt(n)*Dn',y = 'Density',
+    title = "Asymptotic Distribution Under H1 for \n One Sample Kolmogorov-Smirnov Test Statistic Dn",
+    subtitle = paste(tag,"and n = ",n)) + theme_bw(14) + defined_theme
+  
+  graph.1
+  
+}
+
+graph.1=Asymptotic_distribution_H0_1(40,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},
+                           tag = "For N(0,1) ","yellow")
+graph.2=Asymptotic_distribution_H1(40,function(x){plaplace(x,0,1)},function(n){rlaplace(n,0,1)},
+                           function(x){pnorm(x,0,1)},tag = "H0: N(0,1), Truely Laplace(0,1)")
+ 
+graph.3=Asymptotic_distribution_H1(40,pmixnorm,rmixnorm,
+                           function(x){pnorm(x,0,1)},tag = "H0: N(0,1), Truely Mixture Normal(-4,0,4,2,0.35,2)")
+graph.4=Asymptotic_distribution_H1(40,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},
+                           function(x){pnorm(x,0,1)},tag = "H0: N(0,1), Truely C(0,1)")
+
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,nrow=2)
+
+```
+
+---
+
+#For Testing $H_0$ : C(4,3) vs different Alternatives
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+graph.1=Asymptotic_distribution_H0_1(40,function(x){pcauchy(x,4,3)},function(n){rcauchy(n,4,3)},
+                           tag = "For C(4,3) ","yellow")
+graph.2=Asymptotic_distribution_H1(40,function(x){pcauchy(x,4,3)},function(n){rlaplace(n,4,3)},
+                           function(x){pcauchy(x,4,3)},tag = "H0: C(4,3), Truely Laplace(4,3)")
+ 
+graph.3=Asymptotic_distribution_H1(40,function(x){pcauchy(x,4,3)},function(n){rlogis(n,4,3)},
+                           function(x){pcauchy(x,4,3)},tag = "H0: C(4,3), Truely Logistic(4,3)")
+graph.4=Asymptotic_distribution_H1(40,function(x){pcauchy(x,4,3)},function(n){rnorm(n,4,3)},
+                           function(x){pcauchy(x,4,3)},tag = "H0: C(4,3), Truely N(4,3)")
+
+gridExtra::grid.arrange(graph.1,graph.2,graph.3,graph.4,nrow=2)
+
+```
+
+---
+
+# What if the data is Censored?
+
+* We know, if some of observations $$X_1,X_2,...,X_n$$ are missing, we say that the data is censored.
+
+--
+
+* Censoring may happen in 2 ways:
+                                  1. Type-1 Censoring
+                                  2. Type-2 Censoring
+                                  
+* If it is decided to follow the experiment say upto r items are failed, is called Type-2 Censoring.
+
+--
+
+- For Type-2 Censored data, the Kolmogorov-Smirnov statistic for 2-sided test is:
+
+ $_2D{r,n}$ = $\sup_{0 \le z \le Z_{(r)}}|F_n(z)-z|$ = $max_{1 \le i \le r}\left|\frac{i-0.5}n-Z_{(i)}\right| + \frac{0.5}n$
+
+* Here, we have simulated distribution of  $_2D{r,n}$ for different distributions & different values of $r$.
+
+* More details are available in [Ralph B. D’Agostino & Michael A. Stephens : Goodness-Of-Fit-Techniques](https://www.hep.uniovi.es/sscruz/Goodness-of-Fit-Techniques.pdf)
+
+---
+
+#Asymptotic Distribution of $_2D{r,n}$ :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+#For type two censoring Data
+Ks.Cens2Test <- function(data,H0_CDF,r){
+  censored_data <- sort(data)[1:r]
+  Z_censored_data <- H0_CDF(censored_data)
+  test.statistic <- max(abs((((1:r) - 0.5)/length(data))  - Z_censored_data)) +  (0.5/length(data))
+  return(test.statistic)
+}
+
+
+emp_pdf=function(x){
+  pdf1 <-  function(z){
+    epsilon = 0.01; a = 8*z*exp(-2*z*z);b = a + 2*epsilon;i = 2
+    while(abs(b-a)>epsilon)
+    {
+      a = b;b = a+8*((-1)^(i-1))*i*i*z*exp(-2*i*i*z*z);i = i+1
+    }
+    return(b)
+  }
+  return(vapply(x,FUN = pdf1,FUN.VALUE = 2))
+}
+
+
+par(mfrow = c(2,2))
+
+Ks.data_weibull <- replicate(5000,{
+  sampled_data <- rweibull(30,scale = 2,shape = 1)
+  Ks.Cens2Test(sampled_data,function(x){ pweibull(x,scale = 2,shape = 1) },10)
+})
+hist(sqrt(30)*Ks.data_weibull,col = "yellow",border = "red",freq = F,
+     xlab = "Modified KS Statistic",
+     main = "Asymptotic Distribution of Modified Dn for Type 2 Censoring and r = 10",
+     breaks = seq(0,sqrt(30) + 1/sqrt(100),by = 1/sqrt(1000)),col.main = "#FF3333")
+curve(emp_pdf,add = T,col = "blue")
+mtext("Data from Weibull(2,1) Distribution",side = 3)
+box()
+
+
+Ks.data_exp <- replicate(10000,{
+  sampled_data <- rexp(30,rate = 0.5)
+  Ks.Cens2Test(sampled_data,function(x){ pexp(x,rate = 0.5) },10)
+})
+hist(sqrt(30)*Ks.data_exp,col = "yellow",border = "red",freq = F,
+     xlab = "Modified KS Statistic",
+     main = "Asymptotic Distribution of Modified Dn for Type 2 Censoring and r = 10",
+     breaks = seq(0,sqrt(30) + 1/sqrt(100),by = 1/sqrt(1000)),col.main = "#FF3333")
+curve(emp_pdf,add = T,col = "blue")
+mtext("Data from Exp(1) Distribution",side = 3)
+box()
+
+
+Ks.data_exp1 <- replicate(10000,{
+  sampled_data <- rweibull(30,2,1)
+  Ks.Cens2Test(sampled_data,function(x){ pweibull(x,2,1)},20)
+})
+hist(sqrt(30)*Ks.data_exp1,col = "yellow",border = "red",freq = F,
+     xlab = "Modified KS Statistic",
+     main = "Asymptotic Distribution of Modified Dn for Type 2 Censoring and r = 20",
+     breaks = seq(0,sqrt(30) + 1/sqrt(100),by = 1/sqrt(1000)),col.main = "#FF3333")
+curve(emp_pdf,add = T,col = "blue")
+mtext("Data from Weibull(2,1) Distribution",side = 3)
+box()
+
+
+Ks.data_exp1 <- replicate(5000,{
+  sampled_data <- rexp(30,rate = 0.5)
+  Ks.Cens2Test(sampled_data,function(x){ pexp(x,rate = 0.5) },20)
+})
+hist(sqrt(30)*Ks.data_exp1,col = "yellow",border = "red",freq = F,
+     xlab = "Modified KS Statistic",
+     main = "Asymptotic Distribution of Modified Dn for Type 2 Censoring and r = 20",
+     breaks = seq(0,sqrt(30) + 1/sqrt(100),by = 1/sqrt(1000)),col.main = "#FF3333")
+curve(emp_pdf,add = T,col = "blue")
+mtext("Data from Exp(1) Distribution",side = 3)
+box()
+
+```
+
+---
+
+#Empirical Size for Two sided Kolmogorov-Smirnov Test :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+my.table <- matrix(c(0.0436,0.049,0.0462,0.0466,0.0498,
+                         0.0484,0.0472,0.052,0.0501,0.0506,0.0499,0.0482),byrow = T,ncol = 3)
+my.table <- as.data.frame(my.table)
+colnames(my.table) <- c("Normal(0,1)","Logistic(0,1)","Rayleigh(2)")
+rownames(my.table) <- c("n = 5","n = 20","n = 50","n = 100")
+
+knitr::kable(my.table,format = "html")
+
+```
+
+---
+
+#Empirical Distribution of P-Value of KS Test :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=11.5,fig.height = 6.3,fig.align='center'}
+
+PVal_Distribution <- function(n,rCDF,H0_CDF,tag = " "){
+  set.seed(seed = 1234)
+  p_val <- replicate(10000,{
+    our_sample <- rCDF(n)
+    ks.test(our_sample,H0_CDF,alternative = "two.sided")$p.value
+  })
+  
+  ggplot(my.df <- data.frame(p_val),aes(p_val)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,1 + 1/sqrt(100),
+                                                     by = 1/sqrt(100)),col = 'black',fill = "cyan") + labs(x = 'P value',y = 'Density',
+                                                                                                           title = "Distribution of P-Value of \n One Sample Kolmogorov-Smirnov Test Statistic Dn",
+                                                                                                           subtitle = paste(tag,"and n = ",n)) +
+    theme_bw(14) + defined_theme
+}
+
+g1<- PVal_Distribution(10,function(n){rnorm(n,0,1)},function(x){pnorm(x,0,1)},"H0: X ~ N(0,1)")
+g2 <- PVal_Distribution(30,function(n){rnorm(n,0,1)},function(x){pnorm(x,0,1)},"H0: X ~ N(0,1)")
+
+g3 <- PVal_Distribution(10,function(n){rnorm(n,0,1)},function(x){pnorm(x,0,2)},"H0: X ~ N(0,1) vs. H1 : X ~ N(0,2), H1 True")
+g4 <- PVal_Distribution(30,function(n){rnorm(n,0,1)},function(x){pnorm(x,0,2)},"H0: X ~ N(0,1) vs. H1 : X ~ N(0,2), H1 True")
+
+gridExtra::grid.arrange(g1,g3,g2,g4,ncol = 2,nrow=2)
+
+
+```
+
+---
+
+#Empirical Power Curve of for One-sided Location Alternative :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+
+Power_Function.location <- function(n,H0_CDF,r_CDF_H0,parameter,alpha.level,nullhypo,althypo,is.exact=FALSE,crit.val= FALSE,my.col){
+  if(is.exact== TRUE & crit.val== FALSE)
+  {
+    print(noquote("WARNING: Please input critical value"))
+  }else{
+  set.seed(seed = 1234)
+  my.power=0
+  if(is.exact== FALSE){
+  for(i in 1:length(parameter)){
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample <- r_CDF_H0(n)+parameter[i]
+    performed_test <- ks.test(our_sample,H0_CDF,alternative = "greater",exact=FALSE)
+    sqrt(n)*performed_test$statistic
+  })
+  my.power[i]=mean(4*(asymp_test_stat_val)^2 >= qchisq(alpha.level,df = 2,lower.tail = F,))
+  }
+  power_curve <- data.frame(parameter,power = my.power)
+  ggplot(power_curve,aes(x = parameter,y = power)) +ylim(0,1)+ geom_line(col=my.col,size = 2) +
+    ggtitle(paste("Simulated Power Curve for testing \n H0: ",nullhypo," vs H1: ",althypo)) + geom_point(col="red",size=1.2)+ geom_hline(yintercept = 0.05,col = "black",linetype = "dashed",size = 1.1) +
+    labs(x="a",y="Simulated Power")+
+    theme_bw(14) + defined_theme
+  }else{
+    for(i in 1:length(parameter)){
+      exact_test_stat_val <- replicate(5000,{
+        our_sample <- r_CDF_H0(n)+parameter[i]
+        performed_test <- ks.test(our_sample,H0_CDF,alternative = "greater",exact=TRUE)
+        performed_test$statistic
+      })
+      my.power[i]=mean(exact_test_stat_val >= crit.val)
+    }
+    power_curve <- data.frame(parameter,power = my.power)
+    ggplot(power_curve,aes(x = parameter,y = power)) + ylim(0,1) + geom_line(col=my.col,size = 2) +
+      ggtitle(paste("Simulated Power Curve for testing \n H0: ",nullhypo," vs H1: ",althypo)) + geom_point(col="red",size=1.2)+ geom_hline(yintercept = 0.05,col = "black",linetype = "dashed",size = 1.1) +
+      labs(x = "a",y="Simulated Power")+
+      theme_bw(14) + defined_theme 
+    
+   }
+ }
+}
+
+```
+
+* When the parent Population is Normal
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+  
+g1 <- Power_Function.location(50,function(x){pnorm(x,0,3)},function(n){rnorm(n,0,3)},
+                        seq(-1.5,0,length.out=20),0.05,"X~N(0,3)","X~N(a,3),-1.5<a<0, n = 50",my.col = "yellow")
+
+g2 <- Power_Function.location(50,function(x){pnorm(x,0,1)},function(n){rnorm(n,0,1)},
+               seq(-1.5,0,length.out=20),0.05,"X~N(0,1)","X~N(a,1),-1.5<a<0,n = 50",my.col = "yellow")
+
+gridExtra::grid.arrange(g1,g2,ncol = 2)
+
+```
+
+---
+
+#Empirical Power Curve for One-sided Location Alternative :
+
+* When the parent Population is Cauchy
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+  
+g3 <- Power_Function.location(50,function(x){pcauchy(x,0,3)},function(n){rcauchy(n,0,3)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Cauchy(0,3)","X~Cauchy(a,3),-1.5<a<0",my.col = "aquamarine")
+g4 <- Power_Function.location(50,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Cauchy(0,1)","X~Cauchy(a,1),-1.5<a<0",my.col = "aquamarine")
+gridExtra::grid.arrange(g3,g4,ncol = 2)
+
+```
+
+---
+
+#Empirical Power Curve for One-sided Location Alternative :
+
+* When the parent Population is Uniform
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+  
+g5 <- Power_Function.location(50,function(x){punif(x,0,3)},function(n){runif(n,0,3)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Unif(0,3)","X~Unif(a,a+3),-1.5<a<0",my.col = "seagreen2")
+g6 <- Power_Function.location(50,function(x){punif(x,0,1)},function(n){runif(n,0,1)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Unif(0,1)","X~Unif(a,a+1),-1.5<a<0",my.col = "seagreen2")
+gridExtra::grid.arrange(g5,g6,ncol = 2)
+
+```
+
+---
+
+#Empirical Power Curve for One-sided Location Alternative :
+
+* When the parent Population is Exponential
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+  
+g7 <- Power_Function.location(50,function(x){pexp(x,3)},function(n){rexp(n,3)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Exp(0,3)","X~Exp(a,3),-1.5<a<0",my.col = "cyan1")
+g8 <- Power_Function.location(50,function(x){pexp(x,1)},function(n){rexp(n,1)},
+                        seq(-1.5,0,length.out=20),0.05,"X~Exp(0,1)","X~Exp(a,1),-1.5<a<0",my.col = "cyan1")
+gridExtra::grid.arrange(g7,g8,ncol = 2)
+
+```
+
+---
+
+#Empirical Power Curve for One-sided Scale Alternative :
+
+* When the parent populations are Uniform and Exponential
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+
+Power_Function.scale <- function(n,H0_CDF,r_CDF_H0,parameter,alpha.level,nullhypo,althypo,is.exact= FALSE,crit.val=FALSE,my.col){
+  if(is.exact==TRUE & crit.val == FALSE){
+    print(noquote("WARNING: Please input critical value"))
+  }else{
+    if(is.exact==FALSE){
+  set.seed(seed = 1234)
+  my.power=0
+  for(i in 1:length(parameter)){
+    asymp_test_stat_val <- replicate(5000,{
+      our_sample <- r_CDF_H0(n)/parameter[i]
+      performed_test <- ks.test(our_sample,H0_CDF,alternative = "greater")
+      sqrt(n)*performed_test$statistic
+    })
+    my.power[i]=mean(4*(asymp_test_stat_val)^2 >= qchisq(alpha.level,df = 2,lower.tail = F))
+  }
+  power_curve <- data.frame(parameter,power = my.power)
+  ggplot(power_curve,aes(x = parameter,y = power)) +ylim(0,1)+ geom_line(col=my.col,size = 1.5) +
+    ggtitle(paste("Simulated Power Curve for testing \n H0: ",nullhypo," vs H1: ",althypo)) + 
+    geom_point(col="red",size=1.5) + labs(x=expression(theta),y="Simulated Power")+ 
+    geom_hline(yintercept = 0.05,col = "black",linetype = "dashed",size = 1.1) +
+    theme_bw(14) + defined_theme
+    }else{set.seed(seed = 1234)
+      my.power=0
+      for(i in 1:length(parameter)){
+        exact_test_stat_val <- replicate(5000,{
+          our_sample <- r_CDF_H0(n)/parameter[i]
+          performed_test <- ks.test(our_sample,H0_CDF,alternative = "greater",exact=TRUE)
+          performed_test$statistic
+        })
+        my.power[i]=mean(exact_test_stat_val >= crit.val)
+      }
+      power_curve <- data.frame(parameter,power = my.power)
+      ggplot(power_curve,aes(x = parameter,y = power)) + ylim(0,1)+geom_line(col="darkgoldenrod1",size = 1.5) +
+        ggtitle(paste("Simulated Power Curve for testing \n H0: ",nullhypo," vs H1: ",althypo)) + 
+        geom_point(col="red",size=1.5) + labs(x=expression(theta),y="Simulated Power")+ geom_hline(yintercept = 0.05,col = "black",linewidth = 1.1,linetype="dashed" ) +
+        theme_bw(14) + defined_theme 
+    
+    }
+  }
+}
+g1 <- Power_Function.scale(40,function(x){punif(x,0,2)},function(n){runif(n,0,2)},
+                        seq(1,1.5,length.out=20),0.05,"X~U(0,2)","X~U(0,2/a),1<a<1.5,n = 40",
+                     my.col = "yellow")
+
+g3 <- Power_Function.scale(40,function(x){pexp(x,1)},function(n){rexp(n,1)},
+                     seq(1,1.5,length.out = 20),0.05,"X~Exp(1)","X~Exp(1/a),1 < a < 1.5",
+                     my.col = "yellow")
+
+g5 <- Power_Function.scale(40,function(x){ppareto(x,scale=1,shape=2)},function(n){rpareto(n,scale=1,shape=2)},
+                     seq(1,1.5,length.out = 20),0.05,"X~Pareto(1,2)","X~Pareto(1/a,2),1<a<1.5",
+                     my.col = "seagreen2")
+
+g6 <- Power_Function.scale(40,function(x){prayleigh(x,1)},function(n){rrayleigh(n,1)},
+                     seq(1,1.5,length.out = 20),0.05,"X~RL(0,1)","X~RL(1/a),1<a<1.5",
+my.col = "seagreen2")
+
+gridExtra::grid.arrange(g1,g3,ncol = 2)
+
+```
+
+---
+
+#Empirical Power Curve for One-sided Scale Alternative :
+
+* When the parent populations are Rayleigh and Pareto
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+
+gridExtra::grid.arrange(g5,g6,ncol = 2)
+
+```
+
+---
+
+#Table of Empirical Power for certain two-sided alternatives(For small sample sizes) :
+
+* For $H_0 : X$ ~ $N(0,1)$ 
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+set.seed(seed = 987654321)
+n=c(9,12,15,20,25)
+crit.val=c(0.43001,0.37543,0.33760,0.29407,0.26404)
+H0_CDF=function(x){pnorm(x,0,1)}
+r_CDF=function(n){
+  u=runif(n,pnorm(-1),pnorm(1))
+  qnorm(u)
+}
+my.power=matrix(0,nrow=length(n),ncol=4)
+for(i in 1:length(n)){
+
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample1 <- rcauchy(n[i],0,1)
+    our_sample2 <- rlaplace(n[i],0,1)
+    our_sample3 <- rlogis(n[i],0,1)
+    our_sample4 <- r_CDF(n[i])
+    ks_test1 <- ks.test(our_sample1,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    ks_test2 <- ks.test(our_sample2,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    ks_test3 <- ks.test(our_sample3,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    ks_test4 <- ks.test(our_sample4,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    c(ks_test1,ks_test2,ks_test3,ks_test4)
+  })
+  my.power[i,]=apply(asymp_test_stat_val,1,function(x){mean(x>crit.val[i])})
+}  
+
+colnames(my.power) <- c("Cauchy(0,1)","Laplace(0,1)","Logistic(0,1)","Truncated Normal(0,1) between(-1,1)")
+rownames(my.power) <- c("n = 9","n = 12","n = 15","n = 20","n = 25")
+
+knitr::kable(my.power,format = "html")
+```
+
+---
+
+#Table of Empirical Power for certain two-sided alternatives(For small sample sizes) :
+
+* For $H_0 : X$ ~ $Exp(1)$
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+
+H0_CDF=function(x){pexp(x,1)}
+
+my.power1=matrix(0,nrow=length(n),ncol=3)
+for(i in 1:length(n)){
+
+  asymp_test_stat_val <- replicate(5000,{
+    our_sample1 <- rrayleigh(n[i],1)
+    our_sample2 <- rweibull(n[i],scale=1,shape=2)
+    our_sample3 <- rlnorm(n[i],0,1)
+    ks_test1 <- ks.test(our_sample1,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    ks_test2 <- ks.test(our_sample2,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    ks_test3 <- ks.test(our_sample3,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+    c(ks_test1,ks_test2,ks_test3)
+  })
+  my.power1[i,]=apply(asymp_test_stat_val,1,function(x){mean(x>crit.val[i])})
+}  
+
+colnames(my.power1) <- c("Rayleigh(1)","Weibull(scale=1,shape=2)","Log Normal(0,1)")
+rownames(my.power1) <- c("n = 9","n = 12","n = 15","n = 20","n = 25")
+
+knitr::kable(my.power1,format = "html")
+```
+
+---
+
+# Empirical Power vs sample size for certain two-sided alternatives :
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+Power_curve.n <- function(n,H0_CDF,r_CDF_H1,H0_Pdf,H1_Pdf,alpha.level,nullhypo,althypo,is.exact=FALSE,crit.val=FALSE,
+                          my.col,y.lim=c(0,1),x.lim = c(-5,5))
+{
+  if(is.exact==TRUE & max(crit.val)==FALSE)
+   {print(noquote("WARNING:Please input critical value"))}
+  else{
+    if(is.exact==FALSE){
+      set.seed(seed = 1234)
+      my.power = 0
+      for(i in 1:length(n)){
+         asymp_test_stat_p.val <- replicate(5000,{
+         our_sample <- r_CDF_H1(n[i])
+         test_p.val <- ks.test(our_sample,H0_CDF,alternative = "two.sided")$p.value
+         test_p.val
+      })
+      my.power[i]=mean(asymp_test_stat_p.val <= 0.05)
+     }
+      power_curve <- data.frame(n,power = my.power)
+      graph.1 <- ggplot(power_curve,aes(x = n,y = power)) +ylim(y.lim[1],y.lim[2]) +geom_line(col=my.col,size = 2) +
+        ggtitle(paste("Simulated Power vs sample size for testing \n H0: ",nullhypo," vs H1: ",althypo)) + 
+        geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+        theme_bw(14) + defined_theme
+    }else{
+       set.seed(seed = 1234)
+       my.power = 0
+       for(i in 1:length(n)){
+         exact_test_stat_val <- replicate(5000,{
+           our_sample <- r_CDF_H1(n[i])
+           test.val <- ks.test(our_sample,H0_CDF,alternative = "two.sided",exact=TRUE)$statistic
+           test.val
+         })
+         my.power[i]=mean(exact_test_stat_val >=crit.val[i])
+       }
+       power_curve <- data.frame(n,power = my.power)
+       graph.1 <- ggplot(power_curve,aes(x = n,y = power)) +ylim(y.lim[1],y.lim[2]) + 
+         geom_line(col=my.col,size = 2) +
+         ggtitle(paste("Simulated Power vs sample size for testing \n H0: ",nullhypo," vs H1: ",althypo)) + 
+         geom_point(col="red",size=1.5) + labs(x="Sample Size(n)",y="Simulated Power")+
+         theme_bw(14) + defined_theme
+     }
+    graph.2 <- ggplot() + xlim(x.lim[1],x.lim[2]) + geom_function(fun = H1_Pdf,aes(colour = "H1 PDF"),size = 1.2) + 
+      geom_function(fun = H0_Pdf,aes(colour = "H0 PDF"),size = 1.2) + labs(x = "x","PDF",
+      title = "Plot of PDF's considered under H0 and H1",subtitle = "") + theme_bw(14) + defined_theme 
+    
+    ggpubr::ggarrange(graph.1,graph.2)
+  }
+}
+#mixture Normal dist
+dmixnorm <- function(x){
+ dnorm(x,-4,2)*(1/3)+ dnorm(x,0,0.35)*(1/3) + dnorm(x,4,2)*(1/3)
+}
+
+rmixnorm <- function(n){
+  s <- rmultinom(n,1,c(1,1,1)/3)
+  rnorm(n,-4,2)*s[1,] + rnorm(n,0,.35)*s[2,] + rnorm(n,4,2)*s[3,]
+}
+
+pmixnorm <- function(x){
+ pnorm(x,-4,2)*(1/3)+ pnorm(x,0,0.35)*(1/3) + pnorm(x,4,2)*(1/3)
+}
+
+Power_curve.n(seq(20,200,by=10),function(x){pnorm(x,0,1)},function(n){rcauchy(n,0,1)},
+              function(x){dnorm(x,0,1)},function(x){dcauchy(x,0,1)},0.05,"X~N(0,1)","X~C(0,1)",my.col="coral1")
+```
+
+---
+
+# Empirical Power vs sample size for certain two-sided alternatives :
+
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+Power_curve.n(seq(20,200,by=10),function(x){pnorm(x,0,1)},function(n){rlaplace(n,0,1)},
+              function(x){dnorm(x,0,1)},function(x){dlaplace(x,0,1)},0.05,"X~N(0,1)","X~Laplace(0,1)",my.col="yellow",y.lim = c(0,0.4))
+```
+
+---
+
+#Why is the power so less for Laplace?(Animatic Representation)
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+library(ggplot2)
+library(VGAM)
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+
+power_animation2 <- function(n){
+  set.seed(1234)
+  
+  graph.data <- NULL
+  
+  for(i in 1:length(n)){
+    
+    test.stat <- replicate(3000,{
+      my.s <- rnorm(n[i],0,1)
+      sqrt(n[i])*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+    })
+   graph.data <- rbind(graph.data,data.frame(test_stat = test.stat,Sample_size = c(n[i]),
+                        Dist = c("Normal(0,1)"),crit.val = c(1.35810)))
+  }
+  
+  for(i in 1:length(n)){
+    
+    test.stat <- replicate(3000,{
+      my.s <- rcauchy(n[i],0,1)
+      sqrt(n[i])*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+    })
+    graph.data <- rbind(graph.data,data.frame(test_stat = test.stat,Sample_size = c(n[i]),
+                                              Dist = c("Cauchy(0,1)"),crit.val = c(1.35810)))
+  }
+  
+  for(i in 1:length(n)){
+    
+    test.stat <- replicate(3000,{
+      my.s <- rlaplace(n[i],0,1)
+      sqrt(n[i])*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+    })
+    graph.data <- rbind(graph.data,data.frame(test_stat = test.stat,Sample_size = c(n[i]),
+                                              Dist = c("Laplace(0,1)"),crit.val = c(1.35810)))
+  }
+  
+  for(i in 1:length(n)){
+    
+    test.stat <- replicate(3000,{
+      my.s <- rlogis(n[i],0,1)
+      sqrt(n[i])*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+    })
+    graph.data <- rbind(graph.data,data.frame(test_stat = test.stat,Sample_size = c(n[i]),
+                                              Dist = c("Logistic(0,1)"),crit.val = c(1.35810)))
+  }
+  
+  graph.data$Dist <- factor(graph.data$Dist,levels = c("Normal(0,1)","Cauchy(0,1)","Laplace(0,1)","Logistic(0,1)"))
+  
+  graph.1 <- ggplot(graph.data,aes(x = test_stat,frame = Sample_size,fill =  Dist)) +
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(max(n))) + 1/sqrt(100),
+        by = 1/sqrt(100)),position = "identity") + geom_vline(xintercept = 1.35810,col = "black",linetype = "dashed",
+        size = 0.9) + labs(x = 'sqrt(n)*Dn',y = 'Density') + 
+        theme_bw(14) + defined_theme + facet_wrap(.~Dist)
+  
+  plotly::ggplotly(graph.1) 
+}
+
+
+power_animation2(c(10,20,50,70,100,150,200,250))
+
+```
+
+---
+
+# Empirical Power vs sample size for certain two-sided alternatives :
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+Power_curve.n(seq(20,200,by=10),function(x){pnorm(x,0,1)},rmixnorm,
+              function(x){dnorm(x,0,1)},
+              dmixnorm,0.05,"X~N(0,1)","X~Mixture Normal(-4,0,4,2,0.35,2)",my.col="seagreen2",x.lim = c(-10,10))
+```
+
+---
+
+# Empirical Power vs sample size for certain two-sided alternatives :
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+Power_curve.n(seq(20,200,by=10),function(x){pcauchy(x,0,1)},function(n){rlogis(n,0,1)},
+              function(x){dcauchy(x,0,1)},
+              function(x){dlogis(x,0,1)},0.05,"X~C(0,1)","X~Logistic(0,1)",my.col="seagreen2")
+```
+
+---
+
+# Empirical Power vs sample size for certain two-sided alternatives :
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 6.5,fig.align='center'}
+Power_curve.n(seq(20,200,by=10),function(x){pcauchy(x,0,1)},
+              function(n){rnorm(n,0,1)},
+              function(x){dcauchy(x,0,1)},
+              function(x){dnorm(x,0,1)},
+              0.05,"X~C(0,1)","X~N(0,1)",my.col="aquamarine")
+
+```
+
+---
+
+#Empirical study how test for N(0,1) behaves when data has come from Truncated Normal(0,1) between (-a,a) :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+#========================================================
+
+power_animation1 <- function(n){
+  
+  power.df <- NULL
+  a <- seq(0.5,3,by = 0.2)
+  
+  for(i in 1:length(a)){
+    
+    my.cdf <- function(x){
+      ifelse(x < -a[i],ifelse(x < a[i], 
+            (pnorm(x) - pnorm(-a[i]))/(pnorm(a[i]) - pnorm(-a[i])),1),0)}
+    
+    for(j in 1:length(n)){
+      
+     asymp.p_val <- replicate(1000,{
+       my.s <- qnorm(runif(n[j],pnorm(-a[i]),pnorm(a[i])))
+       ks.test(my.s,"pnorm",alternative = "two.sided")$p.value
+     })
+    
+     power.df <- rbind(power.df,data.frame(Power_val = mean(asymp.p_val <= 0.05),
+                  Sample_size = c(n[j]),a_val = c(a[i])))  
+      
+    }
+  }
+  
+  graph.1 <- ggplot(power.df,aes(x = Sample_size,frame = a_val)) +
+        geom_line(aes(y = Power_val),col = "aquamarine",size = 1.2) + 
+        geom_point(aes(y =  Power_val),col = "red") + 
+        labs(x = "Sample Size",y = "Empirical Power",
+        title = "Empirical Power Curve for testing H0: X~N(0,1) against Truncated Normals") +
+        theme_bw(14) + defined_theme
+  
+  library(plotly)
+  plotly::ggplotly(graph.1) %>% animation_opts(
+    1000, easing = "elastic", redraw = FALSE
+  )
+  
+}
+
+power_animation1(c(10,20,30,50,70,100,150,200,250))
+```
+
+---
+
+# Corrected Power Curve for Discrete Case :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12.5,fig.height = 6,fig.align='center'}
+
+#suppressPackageStartupMessages(library(dgof))
+
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+
+###Does Usual Kolmogorov Fails?
+#Binomial Case===============
+set.seed(seed = 1234)
+my.power=0
+p=seq(0.1,0.9,by=0.05)
+n=10
+f <- function(x){pbinom(x,5,0.5)}
+for(i in 1:length(p)){
+  asymp_test_stat_pval <- replicate(10000,{
+    our_sample <- rbinom(n,5,p[i])
+    performed_test <- ks.test(our_sample,f,alternative = "two.sided",exact=TRUE)
+    
+    performed_test$p.value
+  })
+  my.power[i]=mean(asymp_test_stat_pval<0.05)
+}
+power_curve <- data.frame(p,power = my.power)
+g1 <- ggplot(power_curve,aes(x = p,y = power)) + geom_line(col="darkgoldenrod1",size = 2) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","X~Bin(5,0.5)"," vs H1: ","X~Bin(5,p),0<p<1")) + geom_point(col="red",size=1.5)+
+  labs(p,y="Simulated Power")+geom_hline(yintercept = 0.05,col="blue",size=1.2,linetype="dashed")+
+  theme_bw(14) + defined_theme
+
+###For Poisson Case
+set.seed(seed = 1234)
+my.power=0
+lambda=1:5
+n=10
+f <- function(x){ppois(x,1)}
+for(i in 1:length(lambda)){
+  asymp_test_stat_pval <- replicate(10000,{
+    our_sample <- rpois(n,lambda[i])
+    performed_test <- ks.test(our_sample,f,alternative = "two.sided",exact=TRUE)
+    
+    performed_test$p.value
+  })
+  my.power[i]=mean(asymp_test_stat_pval<0.05)
+}
+power_curve <- data.frame(lambda,power = my.power)
+g2 <- ggplot(power_curve,aes(x = lambda,y = power)) + geom_line(col="darkgoldenrod1",size = 2) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","X~Poisson(1)"," vs H1: ",
+                "X~Poisson(",expression(lambda),")",expression(lambda),">1")) + 
+  geom_point(col="red",size=1.5)+ labs(x=expression(lambda),y="Simulated Power") +
+  geom_hline(yintercept = 0.05,col="blue",size=1.2,linetype="dashed")+
+  theme_bw(14) + defined_theme  
+####For Binomial Distribution==============================
+set.seed(seed = 1234)
+my.power=0
+p=seq(0.1,0.9,by=0.05)
+n=10
+f <- stepfun(0:5,c(0,pbinom(0:5,5,0.5)))
+      for(i in 1:length(p)){
+        asymp_test_stat_pval <- replicate(10000,{
+          our_sample <- rbinom(n,5,p[i])
+          performed_test <- dgof::ks.test(our_sample,f,alternative = "two.sided",exact=TRUE)
+        
+  performed_test$p.value
+        })
+        my.power[i]=mean(asymp_test_stat_pval<0.05)
+      }
+      power_curve <- data.frame(p,power = my.power)
+g3 <-   ggplot(power_curve,aes(x = p,y = power)) + geom_line(col="darkgoldenrod1",size = 2) +
+        ggtitle(paste("Simulated Power Curve for testing \n H0: ","X~Bin(5,0.5)"," vs H1: ","X~Bin(5,p),0<p<1")) + geom_point(col="red",size=1.5)+
+        labs(p,y="Simulated Power")+geom_hline(yintercept = 0.05,col="blue",size=1.2,linetype="dashed")+
+        theme_bw(14) + defined_theme
+      
+####For Poisson Distribution==============================
+set.seed(seed = 1234)
+      my.power=0
+      lambda=1:5
+      n=10
+      f <- stepfun(0:10,c(0,ppois(0:10,1)))
+      for(i in 1:length(lambda)){
+        asymp_test_stat_pval <- replicate(10000,{
+          our_sample <- rpois(n,lambda[i])
+          performed_test <- dgof::ks.test(our_sample,f,alternative = "two.sided",exact=TRUE)
+          
+          performed_test$p.value
+        })
+        my.power[i]=mean(asymp_test_stat_pval<0.05)
+      }
+power_curve <- data.frame(lambda,power = my.power)
+g4 <- ggplot(power_curve,aes(x = lambda,y = power)) + geom_line(col="darkgoldenrod1",size = 2) +
+        ggtitle(paste("Simulated Power Curve for testing \n H0: ","X~Poisson(1)"," vs H1: ",
+                      "X~Poisson(",expression(lambda),")",expression(lambda),">1")) +
+                  geom_point(col="red",size=1.5)+
+        labs(x=expression(lambda),y="Simulated Power")+geom_hline(yintercept = 0.05,col="blue",size=1.2,linetype="dashed")+
+        theme_bw(14) + defined_theme      
+      
+gridExtra::grid.arrange(g1,g2,g3,g4,ncol = 2,nrow = 2)
+
+```
+
+---
+
+#Confidence Band for $F(x)$ :
+
+- We know that the confidence band is a random band which covers the Distribution Function $F$ with a preassigned probability.
+- Hence that $(1-\alpha)100$%  confidence band for $F$ can be derived as,
+$\mathbb{P}(L_n(x)\leq F(x)\leq U_n(x))=1-\alpha$
+where, $L_n(x)=\max(0,\mathbb{F_n}(x)-d_{n,\alpha})$ and $U_n(x)=\min(\mathbb{F}_n(x)+d_{n,\alpha},1)$
+
+---
+
+#Confidence Band for Some Specific Distributions :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+Confidence_band <- function(n,x,H0_CDF,rCDF_H0,D_na,tag){
+ 
+  my.s <- rCDF_H0(n) 
+  empircial_cdf <- ecdf(my.s)
+  Ln.x <- vapply(empircial_cdf(x) - D_na,FUN = function(z){max(0,z)},FUN.VALUE = 2)
+  Un.x <- vapply(empircial_cdf(x) + D_na,FUN = function(z){min(1,z)},FUN.VALUE = 2)
+  
+  graph.data <- data.frame(x = x,val = c(Ln.x,H0_CDF(x),Un.x),
+                  Index = factor(rep(c("Ln (Lower)","Fx","Un (Upper)"),each =  length(x)),
+                  levels = c("Ln (Lower)","Fx","Un (Upper)")),
+                  Lower = Ln.x,Upper = Un.x)
+  ggplot(graph.data,aes(x,val,col = Index)) +  
+    geom_ribbon(data = graph.data,aes(ymin = Lower, ymax = Upper),alpha = 0.1,col = "snow") + 
+    geom_line(linewidth = 1.4) + labs(x = "x",y = "Fn and Fx",title = "Confidence Band for F(x)",
+         subtitle = tag) + theme_bw(14) + defined_theme
+    
+}
+
+g1 <- Confidence_band(10,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+                function(n){rnorm(n,0,1)},0.40925,"When H0: X ~ N(0,1) and n = 10")
+g2 <- Confidence_band(10,seq(-5,5,by = 0.1),function(x){pcauchy(x,0,1)},
+                function(n){rcauchy(n,0,1)},0.40925,"When H0: X ~ C(0,1) and n = 10")
+
+g3 <- Confidence_band(20,seq(-5,5,by = 0.1),function(x){plaplace(x,0,1)},
+                function(n){rlaplace(n,0,1)},0.29407,"When H0: X ~ Laplace(0,1) and n = 20")
+g4 <- Confidence_band(20,seq(-5,5,by = 0.1),function(x){ifelse(x < -2,0,ifelse(x < 2,(pnorm(x) - pnorm(-2))/(pnorm(2) - pnorm(-2)),1))},
+                function(n){qnorm(runif(n,pnorm(-2),pnorm(2)))},0.29407,"When H0: X ~ Trunc N(0,1) with (-2,2)and n = 20")
+
+gridExtra::grid.arrange(g1,g2,g3,g4,ncol = 2)
+```
+
+---
+
+#Confidence Band for $F_1$ when Data is generated from $F_0$ :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+#======================== for H1 cdf ====
+
+Confidence_band_H1 <- function(n,x,H1_CDF,rCDF_H0,D_na,tag){
+  
+  my.s <- rCDF_H0(n) 
+  empircial_cdf <- ecdf(my.s)
+  Ln.x <- vapply(empircial_cdf(x) - D_na,FUN = function(z){max(0,z)},FUN.VALUE = 2)
+  Un.x <- vapply(empircial_cdf(x) + D_na,FUN = function(z){min(1,z)},FUN.VALUE = 2)
+  
+  graph.data <- data.frame(x = x,val = c(Ln.x,H1_CDF(x),Un.x),
+                           Index = factor(rep(c("Ln (Lower)","F1(x)","Un (Upper)"),each =  length(x)),
+                                          levels = c("Ln (Lower)","F1(x)","Un (Upper)")),
+                           Lower = Ln.x,Upper = Un.x)
+  ggplot(graph.data,aes(x,val,col = Index)) +  
+    geom_ribbon(data = graph.data,aes(ymin = Lower, ymax = Upper),alpha = 0.1,col = "snow") + 
+    geom_line(linewidth = 1.4) + labs(x = "x",y = "Fn and F1(x)",title = "Confidence Band for F1(x)",
+       subtitle = tag) + theme_bw(14) + defined_theme
+  
+}
+
+g1 <- Confidence_band_H1(30,seq(-5,5,by = 0.1),function(x){plaplace(x,1,1)},
+                function(n){rnorm(n,0,1)},0.24170,"When H0: X ~ Normal(0,1) and F1 = Laplace(1,1),n = 30")
+g2 <- Confidence_band_H1(30,seq(-5,5,by = 0.1),function(x){plogis(x,0,1)},
+                function(n){rcauchy(n,0,1)},0.24170,"When H0: X ~ Cauchy(0,1) and F1 = Logistic(0,1),n = 30")
+g3 <- Confidence_band_H1(30,seq(-5,5,by = 0.1),function(x){plogis(x,1,1)},
+                function(n){rnorm(n,0,1)},0.24170,"When H0: X ~ Normal(0,1) and F1 = Logistic(1,1),n = 30")
+g4 <- Confidence_band_H1(30,seq(0,5,by = 0.1),function(x){pexp(x,1)},
+                   function(n){rweibull(n,4,1)},0.24170,"When H0: X ~ Weibull(4,1) and F1 = Exp(1),n = 30")
+
+gridExtra::grid.arrange(g1,g2,g3,g4,ncol = 2)
+```
+
+---
+
+# Coverage of Confidence Band For Some Particular Distributions :
+
+* Theoretically Coverage of a Confidence Band is defined as -
+  $\mathbb{P}_{\mathcal{H}_o}(\mathbb{F}_n(x)-d_{n,\alpha} \leq F_1(x) \leq \mathbb{F}_n(x)+d_{n,\alpha} ; \ for \ all \ x \in \mathbb{r}  )$
+
+* When $F_1$ is the same CDF as the CDF under $H_0$ , then it is called Confidence Band.  
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6}
+#===========================================
+
+Coverage <- function(n,x,H1_CDF,rCDF_H0,D_na){
+  set.seed(12345)
+  s<-replicate(1000,{
+       my.s <- rCDF_H0(n) 
+      empircial_cdf <- ecdf(my.s)
+      Ln.x <- vapply(empircial_cdf(x) - D_na,FUN = function(z){max(0,z)},FUN.VALUE = 2)
+      Un.x <- vapply(empircial_cdf(x) + D_na,FUN = function(z){min(1,z)},FUN.VALUE = 2)
+      (all(Ln.x < H1_CDF(x) & Un.x > H1_CDF(x))) 
+   })
+  mean(s)
+}
+
+Coverage.matrix <- matrix(
+c(Coverage(20,seq(-5,5,by = 0.1),function(x){plaplace(x,0,1)},
+           function(n){rlaplace(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rlaplace(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){plogis(x,0,1)},
+         function(n){rlaplace(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pcauchy(x,0,1)},
+         function(n){rlaplace(n,0,1)},0.29407),
+
+Coverage(20,seq(-5,5,by = 0.1),function(x){plaplace(x,0,1)},
+         function(n){rnorm(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rnorm(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){plogis(x,0,1)},
+         function(n){rnorm(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pcauchy(x,0,1)},
+         function(n){rlaplace(n,0,1)},0.29407),
+
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rlogis(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rlogis(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){plogis(x,0,1)},
+         function(n){rlogis(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pcauchy(x,0,1)},
+         function(n){rlaplace(n,0,1)},0.29407),
+
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rcauchy(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pnorm(x,0,1)},
+         function(n){rcauchy(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){plogis(x,0,1)},
+         function(n){rcauchy(n,0,1)},0.29407),
+Coverage(20,seq(-5,5,by = 0.1),function(x){pcauchy(x,0,1)},
+         function(n){rcauchy(n,0,1)},0.29407)),
+ncol = 4,byrow = T)
+
+
+colnames(Coverage.matrix) = rownames(Coverage.matrix) = c("Laplace(0,1)","Normal(0,1)","Logis(0,1)","Cauchy(0,1)")
+
+knitr::kable(as.data.frame(Coverage.matrix),format="html")
+
+```
+
+---
+
+# Kolmogorov-Smirnov test for Partially Specified Null Hypothesis :
+
+- Till now, what ever observations we made was based on taking the null hypothesis to be completely specified.
+
+- Let us consider the problem when the null hypothesis is not completely specified as the above cases.
+
+- In particular let us consider the null as, $$\mathcal{H}_o: X_1,...,X_n \overset{iid}{\sim} N(\mu,1); \mu \in \mathbb{R}$$
+
+- We first see compute the $D_n^+$ under $\mathcal{H}_o$  statistic for a sample $X_1,...X_{100}$ drawn from $N(\mu,1)$ where $\mu$ is unknown.
+
+- Since we don't know $\mu$ we estimate $\mu$ by the sample mean $\bar{X_n}=\frac{1}{n}\sum_{i=1}^{100}X_i$ and take $\hat{F_o}= N(\bar{X_n},1)$ to calculate $D_n^+ = \sup_x (\hat{F_o}(x)-\mathbb{F}_n(x))$.
+
+---
+
+# Kolmogorov-Smirnov test for Partially Specified Null Hypothesis :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+emp_pdf=function(z)
+{
+  epsilon=0.01
+  a=8*z*exp(-2*z*z)
+  b=a+2*epsilon
+  i=2
+  while(abs(b-a)>epsilon)
+  {
+    a=b
+    b=a+8*((-1)^(i-1))*i*i*z*exp(-2*i*i*z*z)
+    i=i+1
+  }
+  return(b)
+}
+n=100
+Kolmogorov_statN <- function(n,rcdf) # taking the null to be Normal with unknown mean and known variance
+{
+  my_sample= rcdf(n)
+  Fx= function(x){pnorm(x,mean=mean(my_sample),sd = 1)}
+  Dn_pl = ks.test(my_sample, Fx,alternative = "greater")$statistic
+  return (sqrt(n)*Dn_pl)
+}
+D=replicate(10000,Kolmogorov_statN(n,function(n){rnorm(n, 1.68,1)}))
+ggplot(my.df <- data.frame(D),aes(x = D)) + 
+  geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                   by = 1/sqrt(100)),col = 'red',fill = "aquamarine") + labs(x = 'sqrt(n)*Dn',y = 'Density',
+title = "Distribution Under H0 for Kolmogorov-Smirnov Test Statistic \n for partially specified Null hypothesis",
+subtitle = paste("For N(mu,1) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+```
+
+- We see that the distribution is heavily positively skewed but the fit with the exact distribution of $D_n^+$ is not good. 
+
+---
+
+# Convergence of $D_n$ under Partially Specified Null Hypothesis :
+
+- From the heavily positive skewness of the distribution of $D_n^+$ under the Partially Specified Null Hypothesis we get the indication that even though we don't know the exact null distribution, the statistic $D_n$ tend to go to $0$, detecting Normality in the data. 
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6,fig.align='center'}
+s= rnorm(10000, 1.68,1)
+Dn=0
+epsilon=0.01
+for(i in 1:10000)
+{
+  s_n=s[1:i]
+  Dn[i]= ks.test(s_n,function(x){pnorm(x,mean=mean(s_n),sd=1)},alternative = "two.sided")$statistic
+  
+}
+my.data=data.frame(Index=1:10000,Dn)
+graph.1=ggplot(my.data,aes(x = Index,y = Dn)) + geom_line(col="darkgoldenrod1",size = 2) +
+  ggtitle("Plot of Sample Size(n) vs Dn ") + geom_point(col="red",size=1.5)+
+  labs(x="Sample Size (n)",y="Value of Dn")+
+  theme_bw(14) + defined_theme
+graph.1
+```
+- Hence we see that even under the Partially Specified Null Hypothesis, the statistic $D_n$ indeed goes to $0$ if the data is really drawn from a Normal population.
+
+---
+# Kolmogorov Statistic under Partially Specified Null Hypothesis for Exponential with unknown mean
+
+- Here we consider the Null Hypothesis to be $\mathcal{H}_o: X_1,...,X_n \overset{iid}{\sim} Exponential(mean=\theta)$. 
+- We estimate the rate by $\bar{X_n}^{-1}$(reciprocal of the sample mean).We plot the distribution of $D_n^+$ and the check the convergence of $D_n$ with the estimated value of $\theta$.
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6,fig.align='center'}
+Kolmogorov_statE1 <- function(n,rcdf) # taking the null to be Normal with unknown mean and known variance
+{
+  my_sample1= rcdf(n)
+  Fx= function(x){pexp(x,rate = (mean(my_sample1))^(-1))}
+  Dn_pl= ks.test(my_sample1, Fx,alternative = "greater")$statistic
+  return (sqrt(n)*Dn_pl)
+}
+D1=replicate(10000,Kolmogorov_statE1(n,function(n){rexp(n,1)}))
+hist(D1, breaks= seq(0,sqrt(n) + 1/sqrt(1000),by = 1/sqrt(1000)),freq = F,col = "yellow",border = "red")
+my_pdf <- function(x){ 4*x*exp(-2*x^2)}
+curve(my_pdf, add=TRUE)
+rug(D1)
+box()
+
+#convergence of Dn 
+s1= rnorm(10000,2,3)
+Dn1=0
+epsilon=0.01
+for(i in 1:10000)
+{
+  s1_n=s1[1:i]
+  Dn1[i]= ks.test(s1_n,function(x){pexp(x,rate=(mean(s1_n))^(-1))},alternative = "two.sided")$statistic
+}
+my.data=data.frame(Index=1:10000,Dn1)
+graph.1=ggplot(my.data,aes(x = Index,y = Dn1)) + geom_line(col="darkgoldenrod1",size = 2) +
+  ggtitle("Plot of Sample Size(n) vs Dn ") + geom_point(col="red",size=1.5)+
+  labs(x="Sample Size (n)",y="Value of Dn")+
+  theme_bw(14) + defined_theme
+graph.1
+```
+- We see comparing the distribution with the case of Normal the distribution of $D_n^+$ is not distribution free anymore but still remains positivey skewed indicating the rejection of null for large values of $D_n$.
+- But surprisingly we see that $D_n$ doesn't converge to 0 anymore. Hence Glivenko-Cantelli fails to hold true.
+
+---
+
+
+# Power Curve for the Partially Specified Null Hypothesis :
+
+- Normal vs Cauchy for unknown location
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+#calculating quantiles of Dn in Partially Specified Case
+
+  Q=NULL
+  for(i in 1:1000)
+  {
+    D=replicate(1000, ks.test(rnorm(i,0,1),function(x){pnorm(x,mean(rnorm(i,0,1)),1)})$statistic)
+    Q[i]=quantile(D,0.95)
+  }
+
+#power curve for Partially specified null
+Power_Function_Normal <- function(n,r_CDF_H1)
+  {
+  set.seed(seed = 1234)
+  asymp_p_val <- replicate(1000,{
+    my_sample = r_CDF_H1(n)
+    Fx= function(x){pnorm(x,mean=mean(my_sample),sd = 1)}
+    ks.test(my_sample, Fx,alternative = "two.sided")$p.value
+  })
+  
+  mean(asymp_p_val < 0.05)
+}
+Power_Function_Normal1<- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  KS=replicate(1000,{
+    my_sample=r_CDF_H1(n)
+    Fx=function(x){pnorm(x,mean=mean(my_sample),sd=1)}
+    ks.test(my_sample,Fx, alternative = "two.sided")$statistic})
+  mean(KS > Q[n])
+}
+
+#power function for Normal vs Cauchy for unknown mean
+pow_c = NULL
+pow_c1=NULL
+n_seq <- seq(1,200,by = 10)
+for(i in 1:length(n_seq))
+{
+  pow_c[i]=Power_Function_Normal(n_seq[i],function(n){rcauchy(n,0,1)})
+  pow_c1[i]=Power_Function_Normal1(n_seq[i],function(n){rcauchy(n,0,1)})
+}
+power_curve <- data.frame(n=c(n_seq,n_seq),power = c(pow_c,pow_c1),Index=rep(c("Quantiles of Dn","Simulated Quantiles"),each=length(n_seq)))
+ggplot(power_curve,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(mu,1)"," vs H1: ","Cauchy(mu,1)")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+```
+
+---
+
+# Normal vs Laplace for unknown location : 
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+library(stats4)
+library(splines)
+library(VGAM)
+
+pow_cL=0
+pow_cL1=0
+for(i in 1:length(n_seq))
+{
+  pow_cL[i]=Power_Function_Normal(n_seq[i],function(n){rlaplace(n,0,1)})
+  pow_cL1[i]=Power_Function_Normal1(n_seq[i],function(n){rlaplace(n,0,1)})
+}
+
+power_curve1 <- data.frame(n=c(n_seq,n_seq),power = c(pow_cL,pow_cL1),Index=rep(c("Quantiles of Dn","Simulated Quantiles"),each=length(n_seq)))
+ggplot(power_curve1,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(mu,1)"," vs H1: ","Laplace(mu,1)")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+```
+
+---
+
+
+# Null Hypothesis with both the Location and Scale unspecified :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+# taking the null to be normal with unknown mean and variance
+Kolmogorov_statN1 <- function(n,rcdf) # taking the null to be Normal with unknown mean and known variance
+{
+  my_sample1= rcdf(n)
+  Fx= function(x){pnorm(x,mean=mean(my_sample1),sd = sd(my_sample1))}
+  Dn_pl= ks.test(my_sample1, Fx,alternative = "greater")$statistic
+  return (sqrt(n)*Dn_pl)
+}
+n = 100
+D1=replicate(10000,Kolmogorov_statN1(n,function(n){rnorm(n, 2,3)}))
+ggplot(my.df <- data.frame(D1),aes(x = D1)) + 
+  geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                   by = 1/sqrt(100)),col = 'red',fill = "cyan") + labs(x = 'sqrt(n)*Dn',y = 'Density',
+title = "Distribution Under H0 for Kolmogorov-Smirnov Test Statistic \n for partially specified Null hypothesis",
+subtitle = paste("For N(mu,sigma^2) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+```
+
+---
+
+# Convergence for $D_n$ for Normal with unknown mean and Variance :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+s1= rnorm(10000,2,3)
+Dn1=0
+epsilon=0.01
+for(i in 2:10000)
+{
+  s1_n=s1[1:i]
+  Dn1[i]= ks.test(s1_n,function(x){pnorm(x,mean=mean(s1_n),sd=sd(s1_n))},alternative = "two.sided")$statistic
+}
+my.data1=data.frame(Index=2:10000,Dn1 = Dn1[2:10000])
+graph1.1=ggplot(my.data,aes(x = Index,y = Dn1)) + geom_line(col="darkgoldenrod1",size = 2) +
+  ggtitle("Plot of Sample Size(n) vs Dn ") + geom_point(col="red",size=1.5)+
+  labs(x="Sample Size (n)",y="Value of Dn")+
+  theme_bw(14) + defined_theme
+graph1.1
+```
+
+---
+
+# Power Function for partially specified Hypothesis :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+#Quantiles
+Q1=NULL
+for(i in 2:1000)
+{
+  D1=replicate(1000, ks.test(rnorm(i,0,1),function(x){pnorm(x,mean(rnorm(i,0,1)),sd(rnorm(i,0,1)))})$statistic)
+  Q1[i]=quantile(D1,0.95)
+}
+#power curve for Partially specified null
+Power_Function1 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  asymp_p_val <- replicate(1000,{
+    our_sample <- r_CDF_H1(n)
+    ks.test(our_sample,function(x){pnorm(x,mean(our_sample),sd(our_sample))},alternative = "two.sided")$p.value
+  })
+  mean(asymp_p_val < 0.05)
+}
+Power_Function_1 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  KS1 <- replicate(1000,{
+    our_sample <- r_CDF_H1(n)
+    ks.test(our_sample,function(x){pnorm(x,mean(our_sample),sd(our_sample))},alternative = "two.sided")$statistic
+  })
+  mean(KS1 >Q1[n])
+}
+
+#taking the alternative as Cauchy with scale and location
+pow_C=0
+pow_C1=0
+n1_seq <- seq(1,200,by = 10)
+for(i in 2:length(n1_seq))
+{
+  pow_C[i]=Power_Function1(n1_seq[i],function(n){rcauchy(n,0,1)})
+  pow_C1[i]=Power_Function_1(n1_seq[i],function(n){rcauchy(n,0,1)})
+  
+}
+power_curve2 <- data.frame(n=c(n1_seq,n1_seq),power = c(pow_C,pow_C1),Index=rep(c("Quantiles of Dn","Simulated Quantiles"),each=length(n1_seq)))
+ggplot(power_curve2,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(mu,sigma^2) "," vs H1: "," Cauchy(mu,sigma) ")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+
+```
+
+---
+
+# If alternative is Laplace :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+#taking the alternative as Laplace
+pow_L=0
+pow_L1=0
+n3_seq <- seq(1,200,by = 10)
+for(i in 2:length(n3_seq))
+{
+  pow_L[i]=Power_Function1(n3_seq[i],function(n){rlaplace(n,0,1)})
+  pow_L1[i]=Power_Function_1(n3_seq[i],function(n){rlaplace(n,0,1)})
+}
+power_curve3 <- data.frame(n=c(n3_seq,n3_seq),power = c(pow_L,pow_L1),Index=rep(c("Quantiles of Dn","Simulated Quantiles"),each=length(n3_seq)))
+ggplot(power_curve3,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(mu,sigma^2) "," vs H1: "," Laplace(mu,sigma) ")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+```
+
+---
+
+
+#Test of Normality : Shapiro Wilk Test 
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+library(ggplot2)
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+suppressPackageStartupMessages(library(MASS))
+
+Power_Function1 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  asymp_p_val <- replicate(10000,{
+    my_sample <- r_CDF_H1(n)
+    Fx=function(x){pnorm(x,mean(my_sample),sd(my_sample))}
+    ks_test_p.val<- ks.test(my_sample, Fx,alternative = "two.sided")$p.value
+    sw_test_p.val<-shapiro.test(my_sample)$p.value
+    c(ks_test_p.val,sw_test_p.val)
+  })
+  apply(asymp_p_val,1,function(x){mean(x<=0.05)})
+}
+
+#taking the alternative as Laplace with scale and location
+n=seq(30,200,by = 10)
+pow_c.3=matrix(0,nrow=length(n),ncol=2)
+for(i in 1:length(n))
+{
+  pow_c.3[i,]=Power_Function1(n[i],function(n){rlaplace(n,0,1)})
+}
+power_curve.3 <- data.frame(n=c(n,n),power=as.vector(pow_c.3),Index=factor(rep(c("Kolmogorov Test",
+                                                                                 "Shapiro-Wilk Test"),each=length(n)),
+                                                                           levels= c("Kolmogorov Test",
+                                                                                     "Shapiro-Wilk Test")))
+graph.3 <- ggplot(power_curve.3,aes(x = n,y = power,col = Index)) + geom_line(size = 1.2) +
+  ggtitle(paste("Simulated Power vs sample size for testing \n H0: ","N(mu,sigma^2)"," vs H1: ","Laplace(mu,sigma)")) + 
+  geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+  theme_bw(14) + defined_theme
+graph.3
+
+```
+
+---
+# Power Curve for the Partially Specified Case for Exponential
+ 
+- Taking the alternative as Gamma we have the following  empirical power curve
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height=6.3,fig.align='center'}
+#Quantiles
+Q2=NULL
+for(i in 2:1000)
+{
+  D2=replicate(1000, ks.test(rexp(i,1),function(x){pexp(x,(mean(rexp(i,1)))^(-1))})$statistic)
+  Q2[i]=quantile(D2,0.95)
+}
+#power curve for Partially specified null
+Power_Function2 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  asymp_p_val <- replicate(1000,{
+    our_sample <- r_CDF_H1(n)
+    ks.test(our_sample,function(x){pexp(x,(mean(our_sample))^(-1))},alternative = "two.sided")$p.value
+  })
+  mean(asymp_p_val < 0.05)
+}
+Power_Function_2 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  KS2 <- replicate(1000,{
+    our_sample <- r_CDF_H1(n)
+    ks.test(our_sample,function(x){pexp(x,(mean(our_sample))^(-1))},alternative = "two.sided")$statistic
+  })
+  mean(KS2 >Q2[n])
+}
+
+#taking the alternative as gamma
+pow_G=0
+pow_qG=0
+n4_seq <- seq(1,200,by = 10)
+for(i in 2:length(n4_seq))
+{
+  pow_G[i]=Power_Function1(n4_seq[i],function(n){rgamma(n,5,5)})
+  pow_qG[i]=Power_Function_1(n4_seq[i],function(n){rgamma(n,5,5)})
+}
+power_curve4 <- data.frame(n=c(n4_seq,n4_seq),power = c(pow_G,pow_qG),Index=rep(c("Quantiles of Dn","Simulated Quantiles"),each=length(n4_seq)))
+ggplot(power_curve4,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","Exponential with mean theta "," vs H1: ","gamma")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+
+
+```
+---
+```{r,include=F}
+
+library(ggplot2)
+
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+
+```
+ 
+# Violation of Independence Assumption of Kolmogorov-Smirnov Test :
+
+* Kolmogorov-Smirnov Test assumes that $X_1,X_2,....,X_n$ are **independent**.
+
+--
+
+* What if the random variables have identical distribution but they are **not independent**.
+
+
+* Under the violation of independence assumptions, is $D_n$ still distribution free ?
+ 
+
+* We will consider three different situations ! 
+ 
+
+---
+
+# Some Examples of Dependent Sequence of Random Variables :
+
+>- Dependent Exponential(1) Random Variables :
+
+* Consider sequence of independent **Exponential(1)** random variables $X_1,X_2,....$. Now,
+ we construct the following sequence of random variables- $Y_1$ = $X_1$, $Y_2$ = $2Min(X_1,X_2)$,..... are dependent **Exponential(1)** r.v.
+ 
+>-  Dependent Normal(0,1) Random Variables :
+
+* Consider sequence of independent **Normal(0,1)** random variables $X_1,X_2,....$. Now,
+ we construct the following sequence of random variables- $Y_1$ = $X_1$, $Y_2$ = $\frac{Y_1 + Y_2}{\sqrt 2}$,..... are dependent **Normal(0,1)** r.v.
+
+>- Dependent Cauchy(0,1) Random Variables :
+
+* Consider sequence of independent **Cauchy(0,1)** random variables $X_1,X_2,....$. Now,
+ we construct the following sequence of random variables- $Y_1$ = $X_1$, $Y_2$ = $\frac{Y_1 + Y_2}{2}$,..... are dependent **Cauchy(0,1)** r.v.
+
+---
+
+# Dependent Exponential(1) Samples :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 6.5,fig.align='center'}
+
+emp_pdf=function(z)
+{
+  epsilon=0.01
+  a=8*z*exp(-2*z*z)
+  b=a+2*epsilon
+  i=2
+  while(abs(b-a)>epsilon)
+  {
+    a=b
+    b=a+8*((-1)^(i-1))*i*i*z*exp(-2*i*i*z*z)
+    i=i+1
+  }
+  return(b)
+}
+
+#Data is generated from Exp(1)
+n <- 20
+exp.ks <- replicate(3000,{
+  ini.s <- rexp(n,1)
+  my.s <- cummin(ini.s)*(1:n)
+  sqrt(n)*ks.test(my.s,"pexp",alternative = "two.sided")$statistic
+})
+
+g1 <- ggplot(g.data <- data.frame(test_stat = exp.ks),aes(x = exp.ks)) +
+  geom_histogram(aes(y = ..density..),col = "black",fill = "seagreen2",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+  by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Exponential(1) and n = 20") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+n <- 30
+exp.ks <- replicate(3000,{
+  ini.s <- rexp(n,1)
+  my.s <- cummin(ini.s)*(1:n)
+  sqrt(n)*ks.test(my.s,"pexp",alternative = "two.sided")$statistic
+})
+
+g2 <- ggplot(g.data <- data.frame(test_stat = exp.ks),aes(x = exp.ks)) +
+  geom_histogram(aes(y = ..density..),col = "black",fill = "aquamarine",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                      by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Exponential(1) and n = 30") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+gridExtra::grid.arrange(g1,g2,ncol = 2)
+
+```
+
+
+---
+
+# Dependent Normal(0,1) Samples :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 7,fig.align='center'}
+
+#Data is generated from N(0,1)
+n <- 20
+exp.norm <- replicate(3000,{
+  ini.s <- rnorm(n,1)
+  my.s <- cumsum(ini.s)/sqrt(1:n)
+  sqrt(n)*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+})
+
+g1 <- ggplot(g.data <- data.frame(test_stat = exp.norm),aes(x = exp.norm)) +
+  geom_histogram(aes(y = ..density..),col = "black",fill = "hotpink",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                      by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Normal(0,1) and n = 20") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+n <- 30
+exp.norm <- replicate(3000,{
+  ini.s <- rnorm(n,1)
+  my.s <- cumsum(ini.s)/sqrt(1:n)
+  sqrt(n)*ks.test(my.s,"pnorm",alternative = "two.sided")$statistic
+})
+
+g2 <- ggplot(g.data <- data.frame(test_stat = exp.norm),aes(x = exp.norm)) +
+  geom_histogram(aes(y = ..density..),col = "black",fill = "coral1",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                      by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Normal(0,1) and n = 30") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+gridExtra::grid.arrange(g1,g2,ncol = 2)
+
+
+```
+
+---
+
+# Dependent Cauchy(0,1) Samples :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 7,fig.align='center'}
+
+#Data is generated from N(0,1)
+#Data is generated from C(0,1)
+n <- 20
+exp.c <- replicate(3000,{
+  ini.s <- rcauchy(n,1)
+  my.s <- cumsum(ini.s)/(1:n)
+  sqrt(n)*ks.test(my.s,"pcauchy",alternative = "two.sided")$statistic
+})
+
+g1 <- ggplot(g.data <- data.frame(test_stat = exp.c),aes(x = exp.c)) +
+  geom_histogram(aes(y = ..density..),col = "black",fill = "seagreen2",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                      by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Cauchy(0,1) and n = 20") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+n <- 30
+exp.c <- replicate(3000,{
+  ini.s <- rcauchy(n,1)
+  my.s <- cumsum(ini.s)/(1:n)
+  sqrt(n)*ks.test(my.s,"pcauchy",alternative = "two.sided")$statistic
+})
+
+g2 <- ggplot(g.data <- data.frame(test_stat = exp.c),aes(x = exp.c)) +
+  geom_histogram(aes(y = ..density..),fill = "aquamarine",col = "black",breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                                      by = 1/sqrt(100)),position = "identity") +
+  labs(x = 'sqrt(n)*Dn',y = 'Density',title = "Distribution of Kolmogorov-Smirnov test",
+       subtitle = "When Data is dependent Cauchy(0,1) and n = 30") + 
+  geom_function(fun = function(x){vapply(x, FUN = emp_pdf, FUN.VALUE = 2)},col = "red",size = 0.9) + theme_bw(14) + 
+  defined_theme
+
+gridExtra::grid.arrange(g1,g2,ncol = 2)
+
+```
+
+---
+
+# Does Glivenko-Cantelli Hold here ?
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 7,fig.align='center'}
+set.seed(987654321)
+n <- 10000
+ini.s1 <- rexp(n,1)
+my.s1 <- cummin(ini.s1)*(1:n)
+my.test_stat1 <- NULL
+for(i in 1:n){
+ my.test_stat1 <- c(my.test_stat1,ks.test(my.s1[1:i],"pexp",alternative = "two.sided")$statistic)  
+}
+
+g1 <- ggplot(g.data <- data.frame(Dn = my.test_stat1,n = 1:n),aes(x = n,y = my.test_stat1))+
+  ylim(0,1) + geom_point(col = "red") + labs(x = 'n',y = 'Dn',title = "Convergence of Kolmogorov-Smirnov test",
+                               subtitle = "When Data is generated from dependent Exp(1) ") + 
+  theme_bw(14) + 
+  defined_theme
+
+set.seed(987654321)
+n <- 10000
+ini.s <- rnorm(n,0,1)
+my.s <- cumsum(ini.s)/sqrt(1:n)
+my.test_stat <- NULL
+for(i in 1:n){
+  my.test_stat <- c(my.test_stat,ks.test(my.s[1:i],"pnorm",alternative = "two.sided")$statistic)  
+}
+
+g2 <- ggplot(g.data <- data.frame(Dn = my.test_stat,n = 1:n),aes(x = n,y = my.test_stat))+
+  ylim(0,1) + geom_point(col = "darkmagenta") + labs(x = 'n',y = 'Dn',title = "Convergence of Kolmogorov-Smirnov test",
+                                subtitle = "When Data is generated from dependent Normal(0,1) ") + 
+  theme_bw(14) + 
+  defined_theme
+
+gridExtra::grid.arrange(g1,g2,ncol = 2)
+
+```
+
+---
+
+# What happens in Multivariate set up ?
+
+- So far, in our discussion, we have talked about one-variate random variables, say $X_1, X_2,...,X_n$.
+
+--
+
+- Now, one general question that may occur in our mind is that whether all these results are valid if we consider p-variate random vectors $\textbf{X}_i$  ,for all $i=1,2,...,n$.
+
+--
+
+- Does Glivenko Cantelli Theorem holds true?
+
+--
+
+- Does Same set up of Kolmogorov Test can be used in multivariate set up?
+
+--
+
+- Let us restrict ourselves in 2-variate case only.
+
+---
+
+#Does Glivenko Cantelli Theorem hold here ?
+
+- Let us consider a sample from a bivariate population with Distribution Function $F(x,y)$ as $(X_1,Y_1),....,(X_n,Y_n)$
+
+- So, let us define the Empirical Distribution function as,
+$$\mathbb{F}_n(x,y)=\frac{1}{n}\sum_{i=1}^n1_{\{X_i\leq x ;Y_i \leq y\}}$$
+- Hence, the analogous Kolmogorv Statistic in this set up will be,
+$D_n= \sup_{x\in \mathbb{R}; y\in \mathbb{R}}|\mathbb{F}_n(x,y)-F(x,y)|$
+
+- By Glivenko-Cantelli we have,
+$\mathbb{P}(\lim_{n\to \infty}D_n =0)=1$
+
+---
+
+#Simulation to check Glivenko Cantelli analogous theorem :
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 11.5,fig.height = 6.3,fig.align='center'}
+rm(list=ls(all=T))
+
+suppressPackageStartupMessages(library(mvtnorm))
+suppressPackageStartupMessages(library(copula))
+suppressPackageStartupMessages(library(LaplacesDemon))
+suppressPackageStartupMessages(library(pracma))
+suppressPackageStartupMessages(library(fMultivar))
+suppressPackageStartupMessages(library(gridExtra))
+
+
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+
+
+set.seed(1234)
+gk_check=function(r_CDF,F0,epsilon,ini.par,lower,upper){
+
+    our_sample = matrix(0,nrow=1,ncol=2)
+    n = 0
+    Dn = 2*epsilon
+    while(Dn[length(Dn)]>epsilon)
+    {
+      n=n+1
+      our_sample=rbind(our_sample,r_CDF(1))
+      Bi_empi_cdf=function(par)
+      {
+        x=par[1]
+        y=par[2]
+        abs(mean((our_sample[,1]<=x) & (our_sample[,2]<=y))-F0(x,y))
+        
+      }
+      Dn[n]=optim(ini.par,Bi_empi_cdf,lower=lower,upper=upper,
+                  method="L-BFGS-B",control=list(fnscale=-1))$value
+    }
+    
+    my.data=data.frame(Index=1:n,Dn)
+    graph.1=ggplot(my.data,aes(x = Index,y = Dn)) + geom_line(col="darkgoldenrod1",size = 2) +
+      ggtitle("Plot of Sample Size(n) vs Dn ") + geom_point(col="red",size=1.5)+
+      labs(x="Sample Size (n)",y="Value of Dn",
+           subtitle=paste("n0=",n))+
+      theme_bw(14) + defined_theme
+    graph.1
+}
+
+#Multivariate Normal Distribution
+g1=gk_check(function(n){rmvnorm(n,c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))},
+         function(x,y){pmvnorm(lower=-Inf,upper=c(x,y),mean=c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))[1]},0.01,
+         ini.par=c(0,0),lower=-Inf,upper=Inf)
+g1=g1+ggtitle("Plot of Dn vs n for \n Bivariate Normal distribution")
+
+g2=gk_check(function(n){rmvnorm(n,c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))},
+            function(x,y){pmvnorm(lower=-Inf,upper=c(x,y),mean=c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))[1]},0.01,
+            ini.par=c(0,0),lower=-Inf,upper=Inf)
+g2=g2+ggtitle("Plot of Dn vs n for \n Bivariate Normal distribution")
+
+g3=gk_check(function(n){rmvnorm(n,c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))},
+            function(x,y){pmvnorm(lower=-Inf,upper=c(x,y),mean=c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))[1]},0.01,
+            ini.par=c(0,0),lower=-Inf,upper=Inf)  
+g3=g3+ggtitle("Plot of Dn vs n for \n Bivariate Normal distribution")
+
+
+#Multivariate Student's t Distribution
+g7=gk_check(function(n){rt2d(n,rho=0.333,nu=3)},
+         function(x,y){pt2d(x,y,rho=0.333,nu=3)},0.01,
+         ini.par=c(1,2),lower=-Inf,upper=Inf)
+g7=g7+ggtitle("Plot of Dn vs n for \n Bivariate t distribution")
+g8=gk_check(function(n){rt2d(n,rho=0.333,nu=3)},
+         function(x,y){pt2d(x,y,rho=0.333,nu=3)},0.01,
+         ini.par=c(1,2),lower=-Inf,upper=Inf)
+g8=g8+ggtitle("Plot of Dn vs n for \n Bivariate t distribution")
+g9=gk_check(function(n){rt2d(n,rho=0.333,nu=3)},
+         function(x,y){pt2d(x,y,rho=0.333,nu=3)},0.01,
+         ini.par=c(1,2),lower=-Inf,upper=Inf)
+g9=g9+ggtitle("Plot of Dn vs n for \n Bivariate t distribution")
+grid.arrange(g1,g2,g3,
+     g7,g8,g9,nrow=2)
+```
+
+---
+
+#Is still Kolmogorov-Smirnov Statistic(analogous) remaining distribution free under H0:
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12.5,fig.height = 6,fig.align='center'}
+emp_pdf=function(z)
+{
+  epsilon=0.001
+  a=8*z*exp(-2*z*z)
+  b=a+2*epsilon
+  i=2
+  while(abs(b-a)>epsilon)
+  {
+    a=b
+    b=a+8*((-1)^(i-1))*i*i*z*exp(-2*i*i*z*z)
+    i=i+1
+  }
+  return(b)
+}
+Asymptotic_distribution_H0 <- function(n,F0,r_CDF,tag = " ",ini.par,lower,upper){
+  set.seed(seed = 1234)
+  asymp_test_stat_val <- replicate(1000,{
+    our_sample <- r_CDF(n)
+    Bi_empi_cdf=function(par)
+    {
+      x=par[1]
+      y=par[2]
+      abs(mean((our_sample[,1]<=x) & (our_sample[,2]<=y))-F0(x,y))
+      
+    }
+    performed_test =optim(ini.par,Bi_empi_cdf,lower=lower,upper=upper,
+                method="L-BFGS-B",control=list(fnscale=-1))$value
+    sqrt(n)*performed_test
+  })
+  ggplot(my.df <- data.frame(asymp_test_stat_val),aes(asymp_test_stat_val)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+                                                     by = 1/sqrt(100)),col = 'black',fill = "aquamarine")+ 
+  ylim(0,1.5)+ labs(x = 'sqrt(n)*Dn',y = 'Density',
+                                                                                                                 title = "Asymptotic Distribution Under H0 \n for Kolmogorov-Smirnov Test Statistic Dn",
+                                                                                                                 subtitle = paste(tag,"and n = ",n)) + geom_function(fun =function(x){vapply(x,FUN= emp_pdf,FUN.VALUE = 2)} ,col = "red") + 
+    theme_bw(14) + defined_theme
+  
+}
+g1=Asymptotic_distribution_H0(100,function(x,y){pmvnorm(lower=-Inf,upper=c(x,y),mean=c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))[1]},
+                           function(n){rmvnorm(n,c(0,0),sigma=matrix(c(3,1,1,3),nrow=2))},
+                          tag="For BVN((0,0),matrix(3,1,1,3)",
+                          ini.par=c(0,0),lower=-Inf,upper=Inf)
+
+
+g2=Asymptotic_distribution_H0(100,function(x,y){pt2d(x,y,rho=0.333,nu=3)},
+                           function(n){rt2d(n,rho=0.333,nu=3)},
+                           tag="For Bivariate t distribution(rho=0.333,nu=3)",
+                           ini.par=c(0,0),lower=-Inf,upper=Inf)
+grid.arrange(g1,g2,ncol=2)
+```
+
+
+---
+
+# Empirical size for this case :
+
+- $H_0$: $Bivariate$ $t(\rho = 0.333,\nu = 3)$ vs $H_1$ : Bivariate Normal with same mean and dispersion
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 7}
+my.table=matrix(c(0.027,0.032,0.035,0.034),nrow=4)
+rownames(my.table)=c("n = 25"," n = 30","n = 40","n = 60")
+my.table=as.data.frame(my.table)
+colnames(my.table) <- c("Empirical Size")
+knitr::kable(my.table,format="html")
+
+```
+
+- $H_0$: Bivariate Normal Vs $H_1$: Bivariate $t$(parameters same as before)
+
+```{r,echo=FALSE,warning=FALSE,fig.width = 12,fig.height = 7}
+my.table=matrix(c(0.022,0.027,0.032,0.037),nrow=4)
+rownames(my.table)=c("n = 25"," n = 30","n = 40","n = 60")
+my.table=as.data.frame(my.table)
+colnames(my.table) <- c("Empirical Size")
+knitr::kable(my.table,format="html")
+
+```
+
+- So, it seems that the test is **Conservative**
+
+---
+
+#Empirical Power Curve for this Case :
+
+```{r, echo = F,out.width='49%', fig.align='center'}
+
+knitr::include_graphics('multi_power.jpeg')
+```
+
+* There is a paper on [Ana Justel,Daniel Peña,Ruben H. Zamar : Multivariate Kolmogorov-Smirnov test](https://www.researchgate.net/publication/222122965_A_multivariate_Kolmogorov-Smirnov_test_of_goodness_of_fit).
+
+---
+
+class: inverse, middle, center
+
+# Some Other Tests of Goodness of Fit and Comparison with Kolmogorov-Smirnov Test
+
+---
+
+#Smoothed Kernel Type Kolomogorov-Smirnov Statistic :
+
+* We have already an idea about Kernel Density Estimation.
+
+--
+
+* But here, We are interested in **Kernel  CDF  Estimation**.
+
+--
+
+* If Kernel Density estimator is defined as - 
+
+$$\hat{f_n}(x,h) = \frac{1}{nh} \sum_{i = 1}^{n} K(\frac{x - X_i}{h})$$
+
+* Then, Kernel CDF estimator is defined as - 
+
+  $$\hat{F_n}(x,h) = \frac{1}{n} \sum_{i = 1}^{n} W(\frac{x - X_i}{h})$$
+
+* Where, $W(x)$ = $\int_{-\infty}^{\ x} K(y) \; dy$
+
+* In kernel density estimation also, we have some boundary problems. Similarly here also we have boundary problems. 
+
+---
+
+#Dealing with Boundary Problems :
+
+* With Little Modifications we will achieve smoothed kernel type estimator :
+
+$$\hat{f_n}(x;h,t) = \frac{1}{nh} \sum_{i = 1}^{n} K(\frac{t(x) - t(X_i)}{h})t^{'}(x)$$
+* Where $t(.)$ is "good" and "Well-defined" function corresponding to the problem.
+
+* Following the above notation Kernel CDF estimator is defined as - 
+
+$$\hat{F_n}(x,h) = \frac{1}{n} \sum_{i = 1}^{n} W(\frac{t(x) - t(X_i)}{h})$$
+
+* Where, $W(.)$ is defined before.
+
+* We will use a [Nils Lid Hjort, Ingrid K. Glad : Parametrically guided kernel density estimation](https://projecteuclid.org/journals/annals-of-statistics/volume-23/issue-3/Nonparametric-Density-Estimation-with-a-Parametric-Start/10.1214/aos/1176324627.full) approach for choosing optimal kernel and bandwidth.
+
+* It's implementation is available in [kdensity](https://cran.r-project.org/web/packages/kdensity/kdensity.pdf) package in R.
+
+---
+
+# The Test-Statistic and it's distribution :
+
+* The test statistic is given by - 
+
+ $$\tilde{D_n} = Sup_{x \in \mathbb{R}}|\mathbb{\tilde{F}}_n(x)-F_o(x)|$$
+* $\sqrt{n}\tilde{D_n}\overset{\mathbb{P}}{\to}0$ as, $n\to \infty$ 
+
+* Also, It's Asymptotic distribution is given by - 
+
+$$\lim_{n\to\infty}P(\sqrt{n}\tilde{D_n}\le{x}) = \frac{\sqrt{2\pi}}{x}\sum_{i=1}^{\infty}exp[{\frac{-(2i - 1)^2\pi^2}{8x^2}}]$$
+
+
+>- The main paper is [Rizky Reza Fauzi,Maesono Yoshihiko : Kolmogorov-Smirnov Test Based on Kernel Estimation](http://stat.w3.kanazawa-u.ac.jp/sympo18/fauzi_abst.pdf).
+
+
+---
+
+# For Normal(0,1) Distribution :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 7,fig.align='center'}
+
+Dn_curl <- function(samp){
+  
+  my_epdf <- kdensity::kdensity(samp)
+  
+  my_ecdf <- function(x){
+    abs(integrate(my_epdf,lower = -Inf,upper = x,abs.tol = 0.01)$value - pnorm(x))
+  }
+  
+  optim(c(0),my_ecdf,lower = -5,upper = 5,
+      method = "L-BFGS-B",control = list(fnscale = -1))$value
+}
+
+Dn_curl_sim <- replicate(1000,{
+  my.s <- rnorm(20)
+  sqrt(20)*c(Dn_curl(my.s),
+    ks.test(my.s,"pnorm",alternative = "two.sided")$statistic)
+})
+
+graph.data1 <- data.frame(test_stat = c(Dn_curl_sim[1,],Dn_curl_sim[2,]),
+              Index = rep(c("Smoothed Kernel Type Ks","Classical Ks"),
+              each = length(Dn_curl_sim[1,])))
+
+p1 <- ggplot(graph.data1,aes(x = test_stat,fill = Index)) + 
+    geom_histogram(aes(y = ..density..),position = "identity",alpha = 0.5,
+    breaks = seq(0,ceiling(sqrt(20)) + 1/sqrt(80),by = 1/sqrt(100) ),col = "black") + 
+    theme_bw(14) + 
+    labs(x = "D_curl",y = "Density",
+    title = "Simulated Distribution of Smoothed Kernel Type Ks and Classical Ks, n = 20 for N(0,1)") + 
+    defined_theme
+
+plotly::ggplotly(p1)
+
+```
+
+---
+
+#For Exponential(1) Distribution :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 7,fig.align='center'}
+
+
+Dn_curl <- function(samp){
+  
+  my_epdf <- kdensity::kdensity(log(samp))
+  
+  my_final_epdf <- function(x){
+    my_epdf(log(x))*(1/x)
+  }
+  
+  my_ecdf <- function(x){
+    abs(integrate(my_final_epdf,lower = 0.001,upper = x,abs.tol = 0.01)$value - pexp(x))
+  }
+  
+  optim(c(2),my_ecdf,lower = 0.001,upper = 5.1,
+        method = "L-BFGS-B",control = list(fnscale = -1))$value
+}
+
+Dn_curl_sim1 <- replicate(1000,{
+  my.s <- rexp(20)
+  sqrt(20)*c(Dn_curl(my.s),
+             ks.test(my.s,"pexp",alternative = "two.sided")$statistic)
+})
+
+graph.data2 <- data.frame(test_stat = c(Dn_curl_sim1[1,],Dn_curl_sim1[2,]),
+                          Index = rep(c("Smoothed Kernel Type Ks","Classical Ks"),
+                                      each = length(Dn_curl_sim[1,])))
+
+p2 <- ggplot(graph.data2,aes(x = test_stat,fill = Index)) + 
+  geom_histogram(aes(y = ..density..),position = "identity",alpha = 0.5,
+                 breaks = seq(0,ceiling(sqrt(20)) + 1/sqrt(100),by = 1/sqrt(100) ),col = "black") + 
+  theme_bw(14) + 
+  labs(x = "D_curl",y = "Density",
+       title = "Simulated Distribution of Smoothed Kernel Type Ks and Classical Ks, n = 20") + 
+  defined_theme
+
+plotly::ggplotly(p2)
+
+
+```
+
+---
+
+# Some Power Results and Comparison with Classical Kolomogorov-Smirnov Test (n = 50)
+
+* Simulated Probability of rejecting $H_0$ for $\tilde{D_n}$
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 7,fig.align='center'}
+my.power1 <- matrix(c(0.050,0.934,0.957,0.976,0.834,0.051,0.872,0.836,
+              0.951,0.936,0.050,0.981,0.871,0.829,0.895,0.050),
+              ncol = 4,byrow = T)
+colnames(my.power1) <- c("Exp(1/2)","Gamma(3,2)","Abs N(0,1)","Log N(0,1)")
+my.df1 <- cbind(colnames(my.power1),my.power1)
+
+knitr::kable(noquote(my.df1),format = "html")
+
+```
+
+* Simulated Probability of rejecting $H_0$ for $D_n$
+
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 7,fig.align='center'}
+my.power1 <- matrix(c(0.051,0.746,0.855,0.724,0.887,0.050,0.851,0.834,
+                  0.784,0.748,0.051,0.878,0.862,0.830,0.891,0.052),
+              ncol = 4,byrow = T)
+colnames(my.power1) <- c("Exp(1/2)","Gamma(3,2)","Abs N(0,1)","Log N(0,1)")
+my.df1 <- cbind(colnames(my.power1),my.power1)
+
+knitr::kable(my.df1,format = "html")
+
+```
+
+---
+
+# Empirical Power Curve for $H_0$ : X ~ N(0,1) vs. $H_1$ : X ~ Laplace(0,1) :
+
+```{r,echo=FALSE,warning=FALSE,fig.width=10,fig.height = 5,fig.align='center'}
+graph.data <- data.frame(Pow.val = c(0.076,0.120,0.121,0.154,0.163,
+               0.209,0.226,0.266,0.276,0.354,0.062,0.085,0.069,
+               0.073,0.059,0.083,0.113,0.128,0.137,0.189),
+               Index = rep(c("Dn_curl","Dn"),each = 10),
+               Sample_s = rep(c(10,20,30,50,80,120,150,180,200,250),times = 2))
+
+
+ggplot(graph.data,aes(x = Sample_s,y = Pow.val,col = Index)) +
+   geom_line(size = 1.2) + geom_point(col = "black") + labs(x = "Sample Size",y = "Empirical Power",
+    title = "Empirical Power Curve of Dn_curl and Dn for H0: N(0,1) vs. Laplace(0,1)") +
+  theme_bw(14) + defined_theme
+               
+```               
+
+* Not much good ! 
+
+---
+
+#Cramér–von Mises test
+
+- For the same hypothesis that we test in two-sided Kolmogorov Test,i.e.,
+Given $X_1,X_2,...,X_n \overset{i.i.d}{\sim} F$, for testing $H_0: F = F_0$ vs $H_1: F \not = F_0$ , where $F$ is the distribution function associated with the random variables.
+
+--
+
+- This test statistic uses **Quadratic Distance** between $F_n(x)$ and $F_0(x)$ .
+$$W_n^2:= n \int (\mathbb{F}_n(x)-F_0(x))^2 dF_o(x)$$
+
+--
+
+- If $H_0$ is true, this statistic tends to be small. So, we need to reject $H_0$ for large values of $W_n^2$.
+
+--
+- This statistic can be further simplified as:
+
+$$W_n^2=\sum_{i=1}^n\left\{U_{(i)}-\frac{2i-1}{2n}\right\}^2+\frac{1}{12n}$$
+where $U_{(j)}$ stands for $j^{th}$ sorted $U_i = F_0(X_i)$
+---
+- **Distribution under $H_0$ :**
+If $H_0$ holds and $F_0$ is continuous, Then $W_n^2$ has an asymptotic distribution with CDF given by,
+
+$$\lim_{n\to \infty} \mathbb{P}(W_n^2\leq x)=1-\frac{1}{\pi}\sum_{j=1}^{\infty}(-1)^{j-1}W_j(x)$$
+where,
+$$W_j(x):=\int_{(2j-1)^2\pi^2}^{4j^2\pi^2}\sqrt{\frac{-\sqrt{y}}{sin\sqrt{y}}}\frac{e^{-\frac{xy}{2}}}{y}dy$$
+
+--
+- This test is distribution free if $F$ is continuous and the sample has no ties.
+
+---
+
+# Anderson–Darling test
+
+- For the same hypothesis that we test in two-sided Kolmogorov Test,i.e.,
+Given $X_1,X_2,...,X_n \overset{i.i.d}{\sim} F$, for testing $H_0: F = F_0$ vs $H_1: F \not = F_0$ , where $F$ is the distribution function associated with the random variables.
+
+--
+
+- This statistic uses **Weighted Quadratic distance** between $F_n(x)$ and $F_0(x)$ weighted by $w_0(x)$ = $F_0(x)(1-F_0(x))^{-1}$.
+
+--
+
+$$A_n^2 := n \int \frac{(F_n(x)-F_o(x))^2}{F_o(x)(1-F_o(x))}dF_o(x)$$
+
+--
+
+- If $H_0$ is true, this statistic tends to be small. So, we need to reject $H_0$ for large values of $A_n^2$.
+- It can be noted that, compared to $W_n^2$, $A_n^2$ puts more weights on the deviation between $F_n(x)$ and $F_0(x)$  that happens on the tail,
+i.e. when $F_0(x)$ $\approx$ $0$ or $F_0(x)$ $\approx$ $1$
+
+---
+
+- This statistic can be further simplified as:
+$$A_n^2= -n -\frac{1}{n}\sum_{i=1}^n \left\{ (2i-1)log(U_{(i)})+(2n+1-2i)log(1-U_{(i)}) \right\}$$
+
+--
+
+- **Distribution under $H_0$ :**
+
+If $H_0$ holds and $F_0$ is continuous, Then $A_n^2$ has an asymptotic distribution given by,
+$$\sum_{j=1}^{\infty}\frac{Y_j}{j(j+1)}, \text{where} \ Y_j\sim \chi_1^2,j\geq 1, \text{are iid}$$
+
+* Reference : [Eduardo García-Portugués : Goodness-of-fit tests for distribution models](https://bookdown.org/egarpor/NP-UC3M/nptests-dist.html)
+
+---
+
+# Simulated Distribution of $W_n^2$ and $A_n^2$(sample size,n=20):
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+
+suppressPackageStartupMessages(library(goftest))
+
+defined_theme <- theme(plot.subtitle = element_text(family = "mono",size = 11,
+                                                    face = "bold",hjust = 0.01),axis.title = element_text(family = "serif"),
+                       axis.text = element_text(size = 10),plot.title = element_text(family = "serif",
+                                                                                     colour = "red", hjust = -0.01),legend.text = element_text(size = 10,family = "serif"), 
+                       legend.title = element_text(family = "serif"),legend.background = element_blank(),
+                       legend.box.background = element_rect(colour = "black"))
+
+#Distribution under H0
+Asymptotic_distribution_H0 <- function(n,True_CDF,r_CDF,tag = " "){
+  set.seed(seed = 1234)
+  asymp_test_stat_val <- replicate(10000,{
+    our_sample <- r_CDF(n)
+    cvm_test <- goftest::cvm.test(our_sample,True_CDF)
+    ad_test <- goftest::ad.test(our_sample,True_CDF)
+    c(cvm_test$statistic,ad_test$statistic)
+  })
+  
+  ggplot(my.df <- data.frame(test_stat = c(asymp_test_stat_val[1,],asymp_test_stat_val[2,]),
+          Index = rep(c("CVM test","AD Test"),each = ncol(asymp_test_stat_val))),aes(x = test_stat,fill = Index)) + 
+    geom_histogram(aes(y = ..density..),breaks = seq(0,ceiling(sqrt(n)) + 1/sqrt(100),
+    by = 1/sqrt(100)),col = 'black') + labs(x = 'Test statistic',y = 'Density',
+    title = "Simulated Distribution Under H0 \n for One Sample CVM and AD test",
+    subtitle = paste(tag,"and n = ",n)) + 
+    theme_bw(14) + defined_theme + facet_wrap(.~Index)
+  
+}
+graph01=Asymptotic_distribution_H0(20,function(x){punif(x,0,3)},function(n){runif(n,0,3)},
+                                   tag = "For U(0,3) ")
+graph02=Asymptotic_distribution_H0(20,function(x){plaplace(x,0,1)},function(n){rlaplace(n,0,1)},
+                                   tag = "For Laplace(0,1) ")
+graph03=Asymptotic_distribution_H0(20,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},
+                                   tag = "For C(0,1) ")
+graph04=Asymptotic_distribution_H0(20,function(x){plogis(x,0,1)},function(n){rlogis(n,0,1)},
+                                   tag = "For Logistic(0,1) ")
+ggpubr::ggarrange(graph01,graph02,nrow=2)
+```
+---
+# Simulated Distribution of $W_n^2$ and $A_n^2$(sample size,n=20):
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+ggpubr::ggarrange(graph03,graph04,nrow=2,ncol=1)
+```
+
+---
+
+# Simulated Distribution of $W_n^2$ and $A_n^2$(sample size,n=50):
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+graph01=Asymptotic_distribution_H0(50,function(x){punif(x,0,3)},function(n){runif(n,0,3)},
+                                   tag = "For U(0,3) ")
+graph02=Asymptotic_distribution_H0(50,function(x){plaplace(x,0,1)},function(n){rlaplace(n,0,1)},
+                                   tag = "For Laplace(0,1) ")
+graph03=Asymptotic_distribution_H0(50,function(x){pcauchy(x,0,1)},function(n){rcauchy(n,0,1)},
+                                   tag = "For C(0,1) ")
+graph04=Asymptotic_distribution_H0(50,function(x){plogis(x,0,1)},function(n){rlogis(n,0,1)},
+                                   tag = "For Logistic(0,1) ")
+ggpubr::ggarrange(graph01,graph02,nrow=2)
+```
+
+---
+# Simulated Distribution of $W_n^2$ and $A_n^2$(sample size,n=50):
+```{r,echo=FALSE,warning=FALSE,fig.width=13,fig.height = 6,fig.align='center'}
+ggpubr::ggarrange(graph03,graph04,nrow=2,ncol=1)
+```
+---
+# Power Comparison between Kolmogorov-Smirnov,Cramer-Von Mises Test,Anderson-Darling Test :
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+Power_curve.n <- function(n,H0_CDF,r_CDF_H1,H0_Pdf,H1_Pdf,nullhypo,althypo)
+{
+      set.seed(seed = 1234)
+      my.power = matrix(0,nrow=length(n),ncol=3)
+      for(i in 1:length(n)){
+        asymp_test_stat_p.val <- replicate(100,{
+          our_sample <- r_CDF_H1(n[i])
+          ks_test_p.val <- ks.test(our_sample,H0_CDF,alternative = "two.sided")$p.value
+          cvm_test_p.val<- goftest::cvm.test(our_sample,H0_CDF)$p.value
+          ad_test_p.val<- goftest::ad.test(our_sample,H0_CDF)$p.value
+          c(ks_test_p.val,cvm_test_p.val,ad_test_p.val)
+        })
+        my.power[i,]=apply(asymp_test_stat_p.val,1,function(x){mean(x<=0.05)})
+      }
+      power_curve <- data.frame(n=c(n,n,n),power=as.vector(my.power),Index=factor(rep(c("Kolmogorov Test",
+                                                            "Cramer-Von Mises Test",
+                                                            "Anderson-Darling Test"),each=length(n)),
+                                                           levels= c("Kolmogorov Test",
+                                                                     "Cramer-Von Mises Test",
+                                                                     "Anderson-Darling Test")))
+      graph.1 <- ggplot(power_curve,aes(x = n,y = power,col = Index)) + geom_line(size = 1.2) +
+        ggtitle(paste("Simulated Power vs sample size for testing \n H0: ",nullhypo," vs H1: ",althypo)) + 
+        geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+        theme_bw(14) + defined_theme
+
+      graph.2 <- ggplot() + xlim(-5,5) + geom_function(fun = H1_Pdf,aes(colour = "H1 PDF"),size = 1.2) + 
+        geom_function(fun = H0_Pdf,aes(colour = "H0 PDF"),size = 1.2) + labs(x = "x","PDF",
+                                                                             title = "Plot of PDF's considered under H0 and H1",subtitle = "") + theme_bw(14) + defined_theme 
+      
+      ggpubr::ggarrange(graph.1,graph.2)
+}
+Power_curve.n(seq(10,200,by = 10),function(x){pnorm(x,0,1)},
+              function(n){ qnorm(runif(n,pnorm(-1),pnorm(1)))},
+              function(x){dnorm(x,0,1)},
+              function(x){ifelse(abs(x) < 1,dnorm(x)/(pnorm(1) - pnorm(-1)),0)}," X ~ N(0,1)","X~Truncated Normal(-1,1)")
+
+```
+
+
+---
+
+# Power Comparison between Kolmogorov-Smirnov,Cramer-Von Mises Test,Anderson-Darling Test :
+
+
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+
+Power_curve.n(seq(10,200,by = 10),function(x){pnorm(x,0,1)},
+              function(n){ rlaplace(n,0,1)},
+              function(x){dnorm(x,0,1)},
+              function(x){dlaplace(x,0,1)}," X ~ N(0,1)","X~Laplace(0,1)")
+
+
+```
+
+
+---
+# Power Comparison between Kolmogorov-Smirnov,Cramer-Von Mises Test,Anderson-Darling Test :
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+
+Power_curve.n(seq(10,200,by = 10),function(x){pcauchy(x,0,1)},
+              function(n){ rlogis(n,0,1)},
+              function(x){dcauchy(x,0,1)},
+              function(x){dlogis(x,0,1)}," X ~ C(0,1)","X~Logistic(0,1)")
+
+
+```
+- Clearly, Anderson Darling is performing much better than the other two in both the cases.
+
+---
+# What happens in Partially Specified Case?
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+##Partial Specification=============================================
+Power_Function_Normal <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  asymp_p.val <- replicate(1000,{
+    my_sample = r_CDF_H1(n)
+    Fx= function(x){pnorm(x,mean=mean(my_sample),sd = 1)}
+    ks_test_p.val<- ks.test(my_sample, Fx,alternative = "two.sided")$p.value
+    cvm_test_p.val<- goftest::cvm.test(my_sample,Fx)$p.value
+    ad_test_p.val<- goftest::ad.test(my_sample,Fx)$p.value
+    c(ks_test_p.val,cvm_test_p.val,ad_test_p.val)
+  })
+  apply(asymp_p.val,1,function(x){mean(x<=0.05)})
+}
+n=seq(10,200,by = 10)
+pow_c.2=matrix(0,nrow=length(n),ncol=3)
+for(i in 1:length(n))
+{
+  pow_c.2[i,]=Power_Function_Normal(n[i],function(n){rlaplace(n,2,1)})
+}
+power_curve.2 <- data.frame(n=c(n,n,n),power=as.vector(pow_c.2),Index=factor(rep(c("Kolmogorov Test",
+                                                                               "Cramer-Von Mises Test",
+                                                                               "Anderson-Darling Test"),each=length(n)),
+                                                                         levels= c("Kolmogorov Test",
+                                                                                   "Cramer-Von Mises Test",
+                                                                                   "Anderson-Darling Test")))
+graph.2 <- ggplot(power_curve.2,aes(x = n,y = power,col = Index)) + geom_line(size = 1.2) +
+  ggtitle(paste("Simulated Power vs sample size for testing \n H0: ","N(mu,1)"," vs H1: ","Laplace(mu,1)")) + 
+  geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+  theme_bw(14) + defined_theme
+graph.2
+```
+---
+# What happens in Partially Specified Case?
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+#power curve for Partially specified null
+Power_Function2 <- function(n,r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  asymp_p_val <- replicate(10000,{
+    my_sample <- r_CDF_H1(n)
+    Fx=function(x){pcauchy(x,median(my_sample),as.vector((quantile(my_sample,0.75)-quantile(my_sample,0.25))/2))}
+    ks_test_p.val<- ks.test(my_sample, Fx,alternative = "two.sided")$p.value
+    cvm_test_p.val<- goftest::cvm.test(my_sample,Fx)$p.value
+    ad_test_p.val<- goftest::ad.test(my_sample,Fx)$p.value
+    c(ks_test_p.val,cvm_test_p.val,ad_test_p.val)
+  })
+  apply(asymp_p_val,1,function(x){mean(x<=0.05)})
+}
+
+#taking the alternative as normal with scale and location
+n=seq(50,200,by = 10)
+pow_c.5=matrix(0,nrow=length(n),ncol=3)
+for(i in 1:length(n))
+{
+  pow_c.5[i,]=Power_Function2(n[i],function(n){rnorm(n,0,1)})
+}
+power_curve.5 <- data.frame(n=c(n,n,n),power=as.vector(pow_c.5),Index=factor(rep(c("Kolmogorov Test",
+                                                                                   "Cramer-Von Mises Test",
+                                                                                   "Anderson-Darling Test"),each=length(n)),
+                                                                             levels= c("Kolmogorov Test",
+                                                                                       "Cramer-Von Mises Test",
+                                                                                       "Anderson-Darling Test")))
+graph.5 <- ggplot(power_curve.5,aes(x = n,y = power,col = Index)) + geom_line(size = 1.2) +
+  ggtitle(paste("Simulated Power vs sample size for testing \n H0: ","C(mu,sigma)"," vs H1: ","N(mu,sigma^2)")) + 
+  geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+  theme_bw(14) + defined_theme
+graph.5
+```
+
+---
+# What happens in Partially Specified Case?
+```{r,echo=FALSE,warning=FALSE,fig.width=12,fig.height = 5,fig.align='center'}
+  
+#taking the alternative as Laplace with scale and location
+n=seq(20,200,by = 10)
+pow_c.6=matrix(0,nrow=length(n),ncol=3)
+for(i in 1:length(n))
+{
+  pow_c.6[i,]=Power_Function2(n[i],function(n){rlaplace(n,0,1)})
+}
+power_curve.6 <- data.frame(n=c(n,n,n),power=as.vector(pow_c.6),Index=factor(rep(c("Kolmogorov Test",
+                                                                                   "Cramer-Von Mises Test",
+                                                                                   "Anderson-Darling Test"),each=length(n)),
+                                                                             levels= c("Kolmogorov Test",
+                                                                                       "Cramer-Von Mises Test",
+                                                                                       "Anderson-Darling Test")))
+graph.6 <- ggplot(power_curve.6,aes(x = n,y = power,col = Index)) + geom_line(size = 1.2) +
+  ggtitle(paste("Simulated Power vs sample size for testing \n H0: ","C(mu,sigma)"," vs H1: ","Laplace(mu,sigma)")) + 
+  geom_point(col="red",size=1.5) + labs(x = "Sample Size(n)",y = "Simulated Power") +
+  theme_bw(14) + defined_theme
+graph.6
+
+```
+---
+
+
+# Berk-Jones Test
+
+- In a 1979 paper, Berk and Jones suggested an intuitively appealing method of testing simple goodness-of-fit null hypothesis.
+
+--
+
+- The Berk-Jones method is just transform the entire goodness-of-fit problem to a Binomial testing problems.
+
+--
+
+- The key fact that it uses is, if $F$ is the underlying true CDF then for every $x \in \mathbb{R}$, $n\mathbb{F}_n(x) \sim Binomial(n,F(x))$.
+
+- So, for given null hypothesis $\mathcal{H}_o:F=F_o$ , for every $x$ what we really want to check is $p(x)=p_o(x)$ where $p(x)=\mathbb{P}(X \leq x)$.
+
+- We can use a likelihood ratio test corresponding to two-sided or one-sided alternative to this hypothesis. Hence we need to maximize the binomial likelihood function with respect to $F(x)$ for every value of $x\in \mathbb{R}$. 
+
+---
+
+# Constructing the Likelihood Ratio Test
+
+-  The maximum likelihood of $F(x)$ is calculated to be $\mathbb{F}_n(x)$. Hence we have the likelihood ratio statistic ,
+--
+-$$\lambda_n(x)=\frac{\mathbb{F}_n(x)^{n\mathbb{F}_n(x)}(1-\mathbb{F}_n(x))^{n-n\mathbb{F}_n(x)}}{\mathbb{F}_o(x)^{n\mathbb{F}_n(x)}(1-\mathbb{F}_o(x))^{n-n\mathbb{F}_n(x)}}$$ 
+$$=\left(\frac{\mathbb{F}_n(x)}{F_o(x)}\right)^{n\mathbb{F}_n(x)}\left(\frac{(1-\mathbb{F}_n(x))}{(1-F_o(x))}\right)^{n-n\mathbb{F}_n(x)}$$
+--
+
+- But since we want to check whether $F(x)=F_o(x)$ for all $x \in \mathbb{R}$. So it makes sense we take the supremum of $\lambda_n$ over all $x \in \mathbb{R}$.
+
+--
+
+- Hence the Berk-Jones Statistics is,
+   $$R_n= n^{-1} \sup_{x \in \mathbb{R}}log(\lambda_n(x)).$$
+---
+
+# Berk-Jones Statistic
+
+- The interesting thing about the statistic $R_n$ is it's connection to the Kullback-Leibler Distance between two Binomial populations.
+
+--
+
+- The Kulback-Liebler Distance between two distributions $Binomial(n,p)$ and $Binomial(n,\theta)$ is defined as,
+  $$K(p,\theta)=plog\left(\frac{p}{\theta}\right)+(1-p)log\left(\frac{1-p}{1-\theta}\right).$$
+--
+
+- Hence we can write,
+  $$R_n= \sup_{x \in \mathbb{R}}K(\mathbb{F}_n(x),F(x)).$$
+--
+
+- Hence we reject $\mathcal{H}_o$, for large values of $R_n$.
+--
+
+- But computing this statistic in R is very difficult because of the $Supremum$. 
+--
+
+- Referring back to the original paper of Berk and Jones(1970) and a recent paper Amit Moscovich and Boaz Nadler(2016), we see that instead of working with $R_n$, we can work with the Likelihood Ratio Statistic $\lambda_n(x)$ itself taking the arguments as a Order statistics of the sample, $X_{(1)},X_{(2)},....,X_{(n)}$.
+
+---
+
+# Computing the Exact Berk-Jones Statistic
+
+- Using the fact that under $\mathcal{H}_o$, we know $U_i=F_o(X_i) \overset{i.i.d}{\sim} Unif(0,1)$, for $F_o$ continuous.
+
+--
+
+- Hence, $U_{(1)},U_{(2)},....,U_{(n)}$ are order statistics from a sample of size $n$ from $Unif(0,1)$.
+
+
+- Berk-Jones(1970) showed that $R_n$ and $-n^{-1}log(M_n)$ has same asymptotic properties. Hence,testing with respect to $R_n$ and $M_n$ are equivalent.
+
+--
+
+- Where $M_n=min(M_n^+,M_n^-)$ where, $M_n^+ := min_{1 \leq i \leq n}\mathbb{P}(Beta(i,n-i+1)< u_{(i)})$ and $M_n^- :=min_{1 \leq i \leq n}(1-\mathbb{P}(Beta(i,n-i+1)< u_{(i)}))$.
+
+- Hence, we calculate this $M_n$ which is infact the called the $Exact Berk-Jones Statistic$.
+ 
+---
+
+# Distribution Free Nature of $M_n$ :
+
+- Here, we present the results of some simulation studies which exhibits the Distriution Free nature of $M_n$.
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+Exact_BJ<- function(n,r_CDF)
+{
+  my_sample=r_CDF(n)
+  order=order(my_sample,decreasing = F)
+  U_sample=0
+  for(i in 1:length(order))
+  {
+    U_sample[i]=pnorm(my_sample[order[i]],0,1)
+  }
+  p=NULL
+  for(i in 1:length(U_sample))
+  {
+    p[i]=pbeta(U_sample[i],i,length(U_sample)-i+1)
+  }
+  Mp=min(p)
+  Mm=min(1-p)
+  M=min(Mp,Mm)
+  return(M)
+}
+#for Normal
+MN=replicate(1000,Exact_BJ(100,function(n){rnorm(n,0,1)}))
+g1=ggplot(my.df <- data.frame(MN),aes(x = MN)) + 
+    geom_histogram(aes(y = ..density..),col = 'black',fill = "aquamarine",breaks = seq(0,0.5,by = 1/sqrt(1000))) + labs(x = 'sqrt(n)*Dn',y = 'Density',
+  title = "Distribution Under H0 for Berk-Jones Test Statistic",
+  subtitle = paste("For N(0,1) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+
+# for Cauchy
+Exact_BJC<- function(n,r_CDF)
+{
+  my_sample=r_CDF(n)
+  order=order(my_sample,decreasing = F)
+  U_sample=0
+  for(i in 1:length(order))
+  {
+    U_sample[i]=pcauchy(my_sample[order[i]],0,1)
+  }
+  p=NULL
+  for(i in 1:length(U_sample))
+  {
+    p[i]=pbeta(U_sample[i],i,length(U_sample)-i+1)
+  }
+  Mp=min(p)
+  Mm=min(1-p)
+  M=min(Mp,Mm)
+  return(M)
+}
+MC=replicate(1000,Exact_BJC(100,function(n){rcauchy(n,0,1)}))
+g2=ggplot(my.df <- data.frame(MC),aes(x = MC)) + 
+   geom_histogram(aes(y = ..density..),col = 'black',fill = "cyan",breaks = seq(0,0.5,by = 1/sqrt(1000))) +    labs(x = 'sqrt(n)*Dn',y = 'Density',
+  title = "Distribution Under H0 for Berk-Jones Test Statistic",
+  subtitle = paste("For C(0,1) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+
+#for Laplace
+Exact_BJL<- function(n,r_CDF)
+{
+  my_sample=r_CDF(n)
+  order=order(my_sample,decreasing = F)
+  U_sample=0
+  for(i in 1:length(order))
+  {
+    U_sample[i]=plaplace(my_sample[order[i]],0,1)
+  }
+  p=NULL
+  for(i in 1:length(U_sample))
+  {
+    p[i]=pbeta(U_sample[i],i,length(U_sample)-i+1)
+  }
+  Mp=min(p)
+  Mm=min(1-p)
+  M=min(Mp,Mm)
+  return(M)
+}
+ML=replicate(1000,Exact_BJL(100,function(n){rlaplace(n,0,1)}))
+g3=ggplot(my.df <- data.frame(ML),aes(x = ML)) + 
+    geom_histogram(aes(y = ..density..),col = 'black',fill = "yellow",breaks = seq(0,0.5,by = 1/sqrt(1000))) + labs(x = 'sqrt(n)*Dn',y = 'Density',
+  title = "Distribution Under H0 for Berk-Jones Test Statistic",
+  subtitle = paste("For Laplace(0,1) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+#for Exponential
+Exact_BJE<- function(n,r_CDF)
+{
+  my_sample=r_CDF(n)
+  order=order(my_sample,decreasing = F)
+  U_sample=0
+  for(i in 1:length(order))
+  {
+    U_sample[i]=pexp(my_sample[order[i]],1)
+  }
+  p=NULL
+  for(i in 1:length(U_sample))
+  {
+    p[i]=pbeta(U_sample[i],i,length(U_sample)-i+1)
+  }
+  Mp=min(p)
+  Mm=min(1-p)
+  M=min(Mp,Mm)
+  return(M)
+}
+ME=replicate(1000,Exact_BJE(100,function(n){rexp(n,1)}))
+g4=ggplot(my.df <- data.frame(ME),aes(x = ME)) + 
+  geom_histogram(aes(y = ..density..),col = 'black',fill = "chartreuse1",breaks = seq(0,0.5,by = 1/sqrt(1000))) + labs(x = 'sqrt(n)*Dn',y = 'Density',
+  title = "Distribution Under H0 for Berk-Jones Test Statistic",
+  subtitle = paste("For Expo(1) and n = ",n)) + 
+  geom_function(fun = function(x){vapply(x,FUN=emp_pdf,FUN.VALUE = 2)},col="red")+
+  theme_bw(14) +
+  defined_theme
+gridExtra::grid.arrange(g1,g2,g3,g4, nrow=2)
+
+
+```
+
+---
+
+#Power Curve Comparison for Berk-Jones : 
+
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+Power_Fn_BJ <- function(n, r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  Mn_stat <- replicate(1000, Exact_BJ(n,function(n){r_CDF_H1(n)}))
+  mean(2*log(n*log(log(n)))*Mn_stat < qexp(0.05,2))
+}
+Power_Fn_KS <- function(n, r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  KS_pv <- replicate(1000, ks.test(r_CDF_H1(n),function(x){pnorm(x,0,1)})$p.value)
+  mean(KS_pv <= 0.05)
+}
+pc1=NULL
+n=4:100
+for(i in 1:length(n) )
+{
+  pc1[i]=Power_Fn_BJ(n[i],function(n){rcauchy(n,0,1)})
+}
+pcK1=NULL
+for(i in 1:length(n) )
+{
+  pcK1[i]=Power_Fn_KS(n[i],function(n){rcauchy(n,0,1)})
+}
+power_curve <- data.frame(n=c(n,n),power = c(pc1,pcK1),Index=rep(c("Berk Jones","Kolmogorov"),each=length(n)))
+g1=ggplot(power_curve,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(0,1)"," vs H1: ","Cauchy(0,1)")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+
+pl=0
+n1=4:100
+for(i in 1:length(n1) )
+{
+  pl[i]=Power_Fn_BJ(n1[i],function(n){rlaplace(n,0,1)})
+}
+plK1=NULL
+for(i in 1:length(n1) )
+{
+  plK1[i]=Power_Fn_KS(n1[i],function(n){rlaplace(n,0,1)})
+}
+power_curve1 <- data.frame(n=c(n1,n1),power1 = c(pl,plK1),Index=rep(c("Berk Jones","Kolmogorov"),each=length(n1)))
+g2=ggplot(power_curve1,aes(x = n,y = power1,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(0,1)"," vs H1: ","Laplace(0,1)")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+
+gridExtra::grid.arrange(g1,g2, ncol=2)
+
+```
+---
+# Power Curve Comparison for Berk Jones :
+
+- We saw earlier that Kolmogorov-Smirnov was failing to detect trunctated normal, truncated at -2 and 2. 
+- This happens mostly because almost the entire probability of Normal is concentrated within -3 and 3.
+- Here we try to address this problem using Berk-Jones Test. Can Berk-Jones detect very slight difference in tails ? 
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+r_CDF=function(n){
+  u=runif(n,pnorm(-2),pnorm(2))
+  qnorm(u)
+}
+my_CDF = function(x){
+  ifelse(x < -1,0,
+         ifelse(x < 1,(pnorm(x) - pnorm(-2))/(pnorm(2) - pnorm(-2)),1))
+}
+pt=0
+n1=4:300
+for(i in 1:length(n1) )
+{
+  pt[i]=Power_Fn_BJ(n1[i],function(n){r_CDF(n)})
+}
+ptK=NULL
+for(i in 1:length(n1) )
+{
+  ptK[i]=Power_Fn_KS(n1[i],function(n){r_CDF(n)})
+}
+power_curve3 <- data.frame(n=c(n1,n1),power1 = c(pt,ptK),Index=rep(c("Berk Jones","Kolmogorov"),each=length(n1)))
+ggplot(power_curve3,aes(x = n,y = power1,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","N(0,1)"," vs H1: ","Normal(0,1) truncated at -2 and 2")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+```
+
+---
+# Power Curve Comparison for Berk Jones
+- Lastly let us also see how Berk-Jones test behave for the test of Cauchy vs Logistic
+```{r,echo=FALSE,warning=FALSE,fig.width=20,fig.height=8.5}
+Power_Fn_BJC <- function(n, r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  Mn_statC <- replicate(1000, Exact_BJC(n,function(n){r_CDF_H1(n)}))
+  mean(2*log(n*log(log(n)))*Mn_statC < qexp(0.05,2))
+}
+Power_Fn_KSC <- function(n, r_CDF_H1)
+{
+  set.seed(seed = 1234)
+  KS_pvC <- replicate(1000, ks.test(r_CDF_H1(n),function(x){pcauchy(x,0,1)})$p.value)
+  mean(KS_pvC <= 0.05)
+}
+pc2=NULL
+n=4:150
+for(i in 1:length(n) )
+{
+  pc2[i]=Power_Fn_BJC(n[i],function(n){rlogis(n,0,1)})
+}
+pcK2=NULL
+for(i in 1:length(n) )
+{
+  pcK2[i]=Power_Fn_KSC(n[i],function(n){rlogis(n,0,1)})
+}
+power_curve2 <- data.frame(n=c(n,n),power = c(pc2,pcK2),Index=rep(c("Berk Jones","Kolmogorov"),each=length(n)))
+ggplot(power_curve2,aes(x = n,y = power,col=Index)) + geom_line(size = 1.5) +
+  ggtitle(paste("Simulated Power Curve for testing \n H0: ","Cauchy(0,1)"," vs H1: ","Logistic(0,1)")) + 
+  geom_point(size=1.5) + labs(x="n",y="Simulated Power")+
+  theme_bw(14) + defined_theme
+```
+---
+# References : 
+
+* [Anirban Dasgupta(2008): Asymptotic Theory of Statistics and Probability](https://link.springer.com/book/10.1007/978-0-387-75971-5)
+
+* [Jean D. Gibbons and Subhabrata Chakraborti(2003) : Nonparametric Statistical Inference](http://erecursos.uacj.mx/bitstream/handle/20.500.11961/2064/Gibbons%2C%202003.pdf?sequence=14&isAllowed=y)
+
+* [Peter Gaenssler and Jon A.Weller : A review On Glivenko Cantelli theorems](https://sites.stat.washington.edu/jaw/JAW-papers/NR/jaw-gaenssler.ess.83.pdf)
+
+* [Amit Moscovich, Boaz Nadler, Clifford Spiegelman(2016) : On the exact Berk-Jones statistics and their p-value calculation](https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-2/On-the-exact-Berk-Jones-statistics-and-their-p-value/10.1214/16-EJS1172.full)
+
+* [Robert H. Berk and Douglas H. Jones(1979) : Goodness-of-Fit Test Statistics that Dominate the Kolmogorov Statistics](https://link.springer.com/article/10.1007/BF00533250)
+
+---
+
+class: inverse, middle, center
+
+# Thank You !
