@@ -1,0 +1,10 @@
+# Kolmogorov-Smirnov Test - Test of Goodness of Fit 
+# Uttaran Chatterjee, Adrija Saha, Shrayan Roy
+# Indian Statistical Institute, Delhi Center
+
+#Instruction to see the presentation :
+1. Open the "Full_Presentation" html file in your browser.
+2. The "NPI_Codes" contains all the codes.
+3. "libs" and "Full_Presentation_files" contains files related to presentation html file.
+
+
